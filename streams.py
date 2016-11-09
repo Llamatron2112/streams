@@ -4,7 +4,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version('GstPbutils', '1.0')
 from gi.repository import GObject, Gtk, Gst, GstPbutils
 
-from sys import argv
+from sys import argv, exit
 
 import mimetypes
 
@@ -18,13 +18,18 @@ import re
 
 from xml.etree import ElementTree as et
 
-from os import path, makedirs
+from os import path, makedirs, remove
 
 from subprocess import Popen, PIPE, DEVNULL
 
 from collections import OrderedDict
 
 import json
+
+import time
+import threading
+
+import socket
 
 glade_loc = "{}/ui.glade".format(path.dirname(__file__))
 
@@ -36,9 +41,6 @@ re_m3u_infos = re.compile(r"#EXTINF:-1,(.*)\n{}".format(url_regex))
 
 re_pls_url = re.compile(r"File(\d+)={}".format(url_regex))
 re_pls_title = re.compile(r"Title(\d+)=(.*)\n")
-
-# re_xspf_url = re.compile(r"<location>{}</location>".format(url_regex))
-# re_xspf_infos = re.compile(r"<track>")
 
 pl_types = ["audio/x-scpls",
             "audio/mpegurl",
@@ -52,6 +54,9 @@ audio_types = ["audio/mpeg",
                "audio/ogg"
                "audio/aac",
                "audio/aacp"]
+
+ipc_port = 10101
+
 
 class MainWindow:
     def __init__(self):
@@ -95,6 +100,9 @@ class MainWindow:
         self.commands_list_load()
         self.command_menu_update()
 
+        ipc_thread = threading.Thread(target=self.ipc, daemon=True)
+        ipc_thread.start()
+
         self.load_db()
 
         self.restore_state()
@@ -105,8 +113,30 @@ class MainWindow:
             if re_url.match(argv[1]):
                 self.add_station(argv[1])
             else:
-                print("let's open", argv[1])
                 self.add_from_file(argv[1])
+
+    def ipc(self):
+        file_path = path.expanduser("~/.cache/streams_port")
+        if not path.exists(path.dirname(file_path)):
+            makedirs(path.dirname(file_path))
+
+        # TODO loop in case default port is already taken
+        ipc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ipc_socket.bind(("localhost", ipc_port))
+        ipc_file = open(file_path, "w")
+        ipc_file.write(str(ipc_port))
+        ipc_file.close()
+
+        ipc_socket.listen(5)
+        while True:
+            conn, addr = ipc_socket.accept()
+            data = conn.recv(1024).decode()
+            # data = str(data)
+            print(data)
+            if re_url.match(data):
+                self.add_station(data)
+            else:
+                self.add_from_file(data)
 
     def load_db(self):
         db_path = path.expanduser("~/.config/streams/stations.xml")
@@ -477,6 +507,10 @@ class MainWindow:
 
     def exit(self, a, b):
         self.write_state()
+
+        ipc_file = path.expanduser("~/.cache/streams_port")
+        remove(ipc_file)
+
         Gtk.main_quit()
         return
 
@@ -847,8 +881,26 @@ class MainWindow:
         file.close()
         self.add_playlist(location, data, mime[0], "file")
 
+        return
 
 if __name__ == '__main__':
+    ipc_path = path.expanduser("~/.cache/streams_port")
+    if path.isfile(ipc_path):
+        print("It looks like an instance is already running")
+        if len(argv) > 1:
+            file = open(ipc_path, "r")
+            ipc_port = int(file.read())
+            file.close()
+
+            data = bytearray(argv[1], "utf-8")
+
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect(("localhost", ipc_port))
+            s.send(data)
+            s.close()
+
+        exit()
+
     GObject.threads_init()
     Gst.init(None)
     MainWindow()
