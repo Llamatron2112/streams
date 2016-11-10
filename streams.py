@@ -26,7 +26,6 @@ from collections import OrderedDict
 
 import json
 
-import time
 import threading
 
 import socket
@@ -886,7 +885,6 @@ class MainWindow:
 if __name__ == '__main__':
     ipc_path = path.expanduser("~/.cache/streams_port")
     if path.isfile(ipc_path):
-        print("It looks like an instance is already running")
         if len(argv) > 1:
             file = open(ipc_path, "r")
             ipc_port = int(file.read())
