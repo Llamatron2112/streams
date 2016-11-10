@@ -26,7 +26,6 @@ from collections import OrderedDict
 
 import json
 
-import time
 import threading
 
 import socket
@@ -159,8 +158,9 @@ class MainWindow:
 
             row[5] = int(row[5])
             row[6] = int(row[6])
+            row[7] = bool(row[7])
 
-            self.bookmarks.append(row)
+            self.bookmarks.append(None, row)
 
         return
 
@@ -256,8 +256,9 @@ class MainWindow:
 
     def add_url(self, url):
         infos = self.fetch_infos(url)
+        infos.append(False)
         print("Adding", url, "with", infos)
-        new_row = self.bookmarks.append(infos)
+        new_row = self.bookmarks.append(None, infos)
         self.selection.select_iter(new_row)
         self.on_selection_change(self.selection)
         self.treeview.scroll_to_cell(self.selection.get_selected_rows()[1][0])
@@ -485,6 +486,7 @@ class MainWindow:
             codec = et.SubElement(server, "codec")
             bitrate = et.SubElement(server, "bitrate")
             sample = et.SubElement(server, "sample")
+            folder = et.SubElement(server, "folder")
 
             name.text = row[0]
             url.text = row[1]
@@ -493,6 +495,7 @@ class MainWindow:
             codec.text = row[4]
             bitrate.text = str(row[5])
             sample.text = str(row[6])
+            folder.text = str(row[7])
 
             i += 1
 

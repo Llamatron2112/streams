@@ -2,7 +2,7 @@
 <!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkListStore" id="bookmarks">
+  <object class="GtkTreeStore" id="bookmarks">
     <columns>
       <!-- column-name name -->
       <column type="gchararray"/>
@@ -18,6 +18,8 @@
       <column type="gint"/>
       <!-- column-name samplerate -->
       <column type="gint"/>
+      <!-- column-name folder -->
+      <column type="gboolean"/>
     </columns>
   </object>
   <object class="GtkMenu" id="menu_window">
