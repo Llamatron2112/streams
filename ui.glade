@@ -59,6 +59,7 @@
                     <property name="model">bookmarks</property>
                     <property name="headers_visible">False</property>
                     <signal name="cursor-changed" handler="on_selection_change" object="bookmarks_view_selection" swapped="no"/>
+                    <signal name="drag-data-received" handler="on_drag_data_received" swapped="no"/>
                     <signal name="row-activated" handler="on_activation" object="text_command" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection" id="bookmarks_view_selection"/>
@@ -147,10 +148,13 @@
                 <property name="margin_right">5</property>
                 <property name="margin_top">5</property>
                 <property name="margin_bottom">5</property>
+                <property name="row_spacing">5</property>
+                <property name="column_spacing">5</property>
                 <child>
                   <object class="GtkEntry" id="text_name">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                   </object>
@@ -191,6 +195,7 @@
                   <object class="GtkEntry" id="text_url">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                     <signal name="changed" handler="on_url_change" swapped="no"/>
@@ -218,6 +223,7 @@
                   <object class="GtkEntry" id="text_web">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                     <signal name="changed" handler="on_web_change" swapped="no"/>
@@ -233,6 +239,7 @@
                     <property name="label" translatable="yes">Dig</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <signal name="clicked" handler="on_dig_clicked" object="text_url" swapped="no"/>
                   </object>
@@ -284,6 +291,7 @@
                   <object class="GtkEntry" id="text_codec">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                     <property name="input_purpose">number</property>
@@ -298,6 +306,7 @@
                   <object class="GtkEntry" id="text_bitrate">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                     <property name="input_purpose">number</property>
@@ -312,6 +321,7 @@
                   <object class="GtkEntry" id="text_sample">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                     <property name="input_purpose">number</property>
@@ -339,6 +349,7 @@
                   <object class="GtkEntry" id="text_genres">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_right">5</property>
                     <property name="hexpand">True</property>
                     <property name="editable">False</property>
                   </object>
@@ -354,6 +365,7 @@
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
                     <property name="no_show_all">True</property>
+                    <property name="margin_right">5</property>
                     <signal name="clicked" handler="on_web_clicked" object="text_web" swapped="no"/>
                   </object>
                   <packing>
