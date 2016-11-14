@@ -136,6 +136,7 @@ class MainWindow:
         while True:
             conn, addr = ipc_socket.accept()
             dat = conn.recv(1024).decode()
+            print(dat)
             if re_url.match(dat):
                 self.add_station(dat)
             else:
@@ -178,12 +179,13 @@ class MainWindow:
     def on_activation(self, text, path, column):
         url = self.bookmarks[path][1]
         cmd = text.get_text().format(url)
+        print(cmd)
         cmd = cmd.split(" ", 1)
         try:
             Popen([cmd[0], cmd[1]],
-                             shell=False,
-                             stdout=PIPE,
-                             stderr=DEVNULL)
+                  shell=False,
+                  stdout=PIPE,
+                  stderr=DEVNULL)
         except FileNotFoundError as err:
             self.error_popup(err)
 
@@ -251,15 +253,18 @@ class MainWindow:
                 row = [fol_name, "", "", "","", 0, 0, True]
                 self.bookmarks.append(None, row)
                 self.save_db()
+                print("Added folder", fol_name)
         return
 
     def add_station(self, url):
+        print("Adding", url)
         content_type = None
 
         try:
             response = urllib.request.urlopen(url)
             info = response.info()
             content_type = info.get_content_type()
+            print(content_type)
 
         except urllib.error.HTTPError as err:
             dialog = Gtk.MessageDialog(self.window,
@@ -275,16 +280,19 @@ class MainWindow:
 
         except http.client.BadStatusLine as err:
             if err.line == 'ICY 200 OK\r\n':
+                print("ICY 200 match")
                 self.add_url(url)
                 return
 
         if content_type in pl_types:
             data = str(response.read(), "utf-8")
             response.close()
-            self.add_playlist(url, data, content_type, "web")
+            print("Identified as playlist")
+            self.add_playlist(url, data, content_type, False)
 
         elif content_type in audio_types:
             response.close()
+            print("Identified as audio")
             self.add_url(url)
 
         else:
@@ -295,6 +303,7 @@ class MainWindow:
     def add_url(self, url):
         infos = self.fetch_infos(url)
         infos.append(False)
+        print("Adding", url, "with", infos)
         new_row = self.bookmarks.append(None, infos)
         self.selection.select_iter(new_row)
         self.on_selection_change(self.selection)
@@ -375,6 +384,7 @@ class MainWindow:
         data = self.fetch_infos(url)
 
         if data == "error":
+            print("Error: Can't autofill")
             return
 
         self.builder.get_object("text_name").set_text(data[0])
@@ -390,6 +400,7 @@ class MainWindow:
     def fetch_infos(self, url):
         server_url = self.dig(url, False)
         if server_url == "error":
+            print("Error: Can't fetch infos")
             return "error"
 
         info = GstPbutils.Discoverer().discover_uri(server_url)
@@ -402,6 +413,7 @@ class MainWindow:
         n = tags.n_tags() - 1
         for i in range(0, n):
             tag = tags.nth_tag_name(i)
+            print(i, '=', tag, "=>", tags.get_string(tag)[1])
             if tag == "organization":
                 name = tags.get_string(tag)[1]
             elif tag == "genre":
@@ -420,9 +432,9 @@ class MainWindow:
         caps = audio_stream.get_caps()
         codec = GstPbutils.pb_utils_get_codec_description(caps)
 
-        data = [name, url, genres, web, codec, bitrate, sample]
+        dat = [name, url, genres, web, codec, bitrate, sample]
 
-        return data
+        return dat
 
     def edit_mode(self, state):
         self.edit = state
@@ -493,6 +505,7 @@ class MainWindow:
             return
 
         text_name = self.builder.get_object("text_name")
+        text_label = self.builder.get_object("label_name")
         text_url = self.builder.get_object("text_url")
         label_url = self.builder.get_object("label_url")
         text_genres = self.builder.get_object("text_genres")
@@ -784,6 +797,8 @@ class MainWindow:
         new_url = "fresh"
         i = 0
         while url != new_url and i < 5:
+            print("old", url, "new", new_url)
+
             content_type = None
 
             if new_url != "fresh":
@@ -793,6 +808,7 @@ class MainWindow:
                 response = urllib.request.urlopen(url)
                 info = response.info()
                 content_type = info.get_content_type()
+                print(content_type)
             except urllib.error.HTTPError as err:
                 dialog = Gtk.MessageDialog(self.window,
                                            0,
@@ -806,20 +822,25 @@ class MainWindow:
                 return "error"
             except http.client.BadStatusLine as err:
                 if err.line == "ICY 200 OK\r\n":
+                    print("ICY 200 Match")
                     break
 
             if content_type in pl_types:
+                print("Playlist type match")
                 data = str(response.read(), "utf-8")
                 match = self.parse_playlist(data, content_type)
                 response.close()
 
                 if len(match) > 0 and new_url != "fresh" and not button:
-                    self.add_playlist(url, data, content_type)
+                    self.add_playlist(url, data, content_type, False)
                     return
                 else:
                     new_url = match[0][1]
 
+                print("Next URL:", new_url)
+
             if content_type in audio_types:
+                print("Audio type match")
                 break
 
             if new_url == "fresh":
@@ -833,7 +854,8 @@ class MainWindow:
 
         return url
 
-    def add_playlist(self, location, data, mime, source):
+    def add_playlist(self, location, data, mime, file):
+        print("Entering add_playlist")
         match = self.parse_playlist(data, mime)
 
         if len(match) > 1:
@@ -844,7 +866,7 @@ class MainWindow:
             select = build.get_object("selection_stations")
             text = build.get_object("label_mp")
 
-            if source == "file":
+            if file:
                 b_keep = build.get_object("button_mp_keep")
                 b_keep.set_sensitive(False)
 
@@ -856,6 +878,7 @@ class MainWindow:
                 stations_list.append(station)
 
             response = dialog.run()
+            print("add_playlist response", response)
             if response == -5:
                 model, pathlist = select.get_selected_rows()
 
@@ -867,23 +890,25 @@ class MainWindow:
 
             dialog.destroy()
 
-        elif len(match) == 1 and source == "web":
+        elif len(match) == 1 and not file:
             self.add_url(location)
 
-        elif len(match) == 1 and source == "file":
+        elif len(match) == 1 and file:
             self.add_url(match[0][1])
 
         return
 
     @staticmethod
     def parse_playlist(data, mime):
+        print("Entering parse_playlist")
         result = []
 
         if mime == "audio/x-scpls" or mime == "application/pls+xml":
+            print("Parsing as x-scpls")
             titles = re_pls_title.findall(data)
             urls = re_pls_url.findall(data)
 
-            ents = re.search(r"numberofentries=(\d)", data)
+            ents = re.search(r"numberofentries=(\d)", data, re.IGNORECASE)
             entries = int(ents.group(1))
 
             tits = {}
@@ -900,24 +925,31 @@ class MainWindow:
                 row = {id: url}
                 locs.update(row)
 
+            print(tits)
+            print(locs)
+
             for i in range(1, entries + 1):
                 row = (tits[i], locs[i])
                 result.append(row)
 
         elif mime == "audio/x-mpegurl" or mime == "audio/mpegurl":
+            print("Parsing as x-mpegurl")
             if re.match(r"^#EXTM3U.*", data):
+                print("Extended")
                 pairs = re_m3u_infos.findall(data)
 
                 for title, url in pairs:
                     row = (title, url)
                     result.append(row)
             else:
+                print("Simple")
                 match = re_url.findall(data)
                 for url in match:
                     row = (url, url)
                     result.append(row)
 
         elif mime == "application/xspf+xml":
+            print("Parsing as xspf+xml")
             root = et.fromstring(data)
             for track in root.iter("{http://xspf.org/ns/0/}track"):
                 loc = track.find("{http://xspf.org/ns/0/}location")
@@ -933,60 +965,65 @@ class MainWindow:
                 row = (title, location)
                 result.append(row)
 
+            print("Parsed with", len(result), "entries")
+
         return result
 
     def add_from_file(self, location):
         mime = mimetypes.guess_type(location)
+        print("mime", mime)
         file = open(location, "r")
         data = file.read()
         file.close()
-        self.add_playlist(location, data, mime[0], "file")
+        self.add_playlist(location, data, mime[0], True)
 
         return
 
     def drag_data_received(self, treeview, context, x, y, selection, info, etime):
         selec = treeview.get_selection()
         row, cursor = selec.get_selected()
-        data = []
+        dat = []
         for d in row[cursor]:
-            data.append(d)
+            dat.append(d)
 
         drop_info = treeview.get_dest_row_at_pos(x, y)
 
         if drop_info:
-            source_folder = data[7]
+            source_folder = dat[7]
             path, position = drop_info
             dest_iter = self.bookmarks.get_iter(path)
             dest_folder = self.bookmarks.get_value(dest_iter, 7)
             dest_parent = self.bookmarks.iter_parent(dest_iter)
-            if position == Gtk.TreeViewDropPosition.BEFORE and not source_folder:
-                new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, data)
-            elif position == Gtk.TreeViewDropPosition.AFTER and not source_folder:
-                new_iter = self.bookmarks.insert_after(dest_parent, dest_iter, data)
+            if not source_folder:
+                if position == Gtk.TreeViewDropPosition.BEFORE:
+                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, dat)
+                elif position == Gtk.TreeViewDropPosition.AFTER:
+                    new_iter = self.bookmarks.insert_after(dest_parent, dest_iter, dat)
+                elif dest_folder:
+                    new_iter = self.bookmarks.append(dest_iter, dat)
+                else:
+                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, dat)
             else:
-                if not dest_folder and dest_parent is not None and source_folder:
-                    new_iter = self.bookmarks.insert_before(None, dest_parent, data)
-                elif not dest_folder and not source_folder:
-                    if position == Gtk.TreeViewDropPosition.INTO_OR_BEFORE:
-                        new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, data)
-                    else:
-                        new_iter = self.bookmarks.insert_after(dest_parent, dest_iter, data)
-                elif dest_folder and source_folder:
-                    new_iter = self.bookmarks.insert_before(None, dest_iter, data)
-                elif not source_folder and dest_folder:
-                    new_iter = self.bookmarks.append(dest_iter, data)
+                if dest_parent is not None:
+                    new_iter = self.bookmarks.insert_before(None, dest_parent, dat)
+                elif position == Gtk.TreeViewDropPosition.BEFORE:
+                    new_iter = self.bookmarks.insert_before(None, dest_iter, dat)
+                elif position == Gtk.TreeViewDropPosition.AFTER:
+                    new_iter = self.bookmarks.insert_after(None, dest_iter, dat)
+                else:
+                    new_iter = self.bookmarks.insert_before(None, dest_iter, dat)
         else:
-            new_iter = self.bookmarks.append(None, data)
+            new_iter = self.bookmarks.append(None, dat)
 
         for it in row[cursor].iterchildren():
-            data = []
+            dat = []
             for value in it:
-                data.append(value)
-            self.bookmarks.append(new_iter, data)
+                dat.append(value)
+            self.bookmarks.append(new_iter, dat)
 
         context.finish(True, True, etime)
 
-        self.save_db()
+        # self.save_db()
 
 
 if __name__ == '__main__':
