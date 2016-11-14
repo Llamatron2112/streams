@@ -137,10 +137,13 @@ class MainWindow:
             conn, addr = ipc_socket.accept()
             dat = conn.recv(1024).decode()
             print(dat)
+            self.window.present()
             if re_url.match(dat):
                 self.add_station(dat)
-            else:
+            elif path.isfile(dat):
                 self.add_from_file(dat)
+            else:
+                print("Nothing to open")
 
     def load_db(self):
         db_path = path.expanduser("~/.config/streams/stations.xml")
@@ -664,7 +667,6 @@ class MainWindow:
         area = dialog.get_content_area()
         dialog.format_secondary_text("Give a name for this action")
         text = Gtk.Entry()
-        text.set_activates_default(Gtk.ResponseType.OK)
         area.add(text)
         text.show()
         dialog.set_default_response(Gtk.ResponseType.OK)
@@ -854,7 +856,7 @@ class MainWindow:
 
         return url
 
-    def add_playlist(self, location, data, mime, file):
+    def add_playlist(self, location, data, mime, file=False):
         print("Entering add_playlist")
         match = self.parse_playlist(data, mime)
 
@@ -1033,19 +1035,25 @@ class MainWindow:
 if __name__ == '__main__':
     ipc_path = path.expanduser("~/.cache/streams_port")
     if path.isfile(ipc_path):
+        file = open(ipc_path, "r")
+        ipc_port = int(file.read())
+        file.close()
+
         if len(argv) > 1:
-            file = open(ipc_path, "r")
-            ipc_port = int(file.read())
-            file.close()
-
-            data = bytearray(argv[1], "utf-8")
-
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            data = argv[1]
+        else:
+            data = ""
+        
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
             s.connect(("localhost", ipc_port))
-            s.send(data)
+            s.send(data.encode())
             s.close()
-
-        exit()
+        except:
+            print("Couldn't connect to a running Streams instance")
+            pass
+        else:
+            exit()
 
     GObject.threads_init()
     Gst.init(None)
