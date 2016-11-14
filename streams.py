@@ -30,7 +30,7 @@ import threading
 
 import socket
 
-glade_loc = "{}/ui.glade".format(path.dirname(__file__))
+glade_loc = "{}/streams.glade".format(path.dirname(__file__))
 
 url_regex = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)"
 re_url = re.compile(url_regex)
