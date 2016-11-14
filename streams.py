@@ -1023,7 +1023,7 @@ class MainWindow:
 
         context.finish(True, True, etime)
 
-        # self.save_db()
+        self.save_db()
 
 
 if __name__ == '__main__':
