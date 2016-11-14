@@ -929,7 +929,11 @@ class MainWindow:
             print(locs)
 
             for i in range(1, entries + 1):
-                row = (tits[i], locs[i])
+                if len(tits) == len(locs):
+                    row = (tits[i], locs[i])
+                else:
+                    row = (locs[i], locs[i])
+
                 result.append(row)
 
         elif mime == "audio/x-mpegurl" or mime == "audio/mpegurl":
@@ -982,44 +986,44 @@ class MainWindow:
     def drag_data_received(self, treeview, context, x, y, selection, info, etime):
         selec = treeview.get_selection()
         row, cursor = selec.get_selected()
-        dat = []
+        data = []
         for d in row[cursor]:
-            dat.append(d)
+            data.append(d)
 
         drop_info = treeview.get_dest_row_at_pos(x, y)
 
         if drop_info:
-            source_folder = dat[7]
+            source_folder = data[7]
             path, position = drop_info
             dest_iter = self.bookmarks.get_iter(path)
             dest_folder = self.bookmarks.get_value(dest_iter, 7)
             dest_parent = self.bookmarks.iter_parent(dest_iter)
             if not source_folder:
                 if position == Gtk.TreeViewDropPosition.BEFORE:
-                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, dat)
+                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, data)
                 elif position == Gtk.TreeViewDropPosition.AFTER:
-                    new_iter = self.bookmarks.insert_after(dest_parent, dest_iter, dat)
+                    new_iter = self.bookmarks.insert_after(dest_parent, dest_iter, data)
                 elif dest_folder:
-                    new_iter = self.bookmarks.append(dest_iter, dat)
+                    new_iter = self.bookmarks.append(dest_iter, data)
                 else:
-                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, dat)
+                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, data)
             else:
                 if dest_parent is not None:
-                    new_iter = self.bookmarks.insert_before(None, dest_parent, dat)
+                    new_iter = self.bookmarks.insert_before(None, dest_parent, data)
                 elif position == Gtk.TreeViewDropPosition.BEFORE:
-                    new_iter = self.bookmarks.insert_before(None, dest_iter, dat)
+                    new_iter = self.bookmarks.insert_before(None, dest_iter, data)
                 elif position == Gtk.TreeViewDropPosition.AFTER:
-                    new_iter = self.bookmarks.insert_after(None, dest_iter, dat)
+                    new_iter = self.bookmarks.insert_after(None, dest_iter, data)
                 else:
-                    new_iter = self.bookmarks.insert_before(None, dest_iter, dat)
+                    new_iter = self.bookmarks.insert_before(None, dest_iter, data)
         else:
-            new_iter = self.bookmarks.append(None, dat)
+            new_iter = self.bookmarks.append(None, data)
 
         for it in row[cursor].iterchildren():
-            dat = []
+            data = []
             for value in it:
-                dat.append(value)
-            self.bookmarks.append(new_iter, dat)
+                data.append(value)
+            self.bookmarks.append(new_iter, data)
 
         context.finish(True, True, etime)
 
