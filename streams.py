@@ -2,7 +2,7 @@ import gi
 gi.require_version('Gst', '1.0')
 gi.require_version("Gtk", "3.0")
 gi.require_version('GstPbutils', '1.0')
-from gi.repository import GObject, Gtk, Gst, GstPbutils, Gdk
+from gi.repository import GObject, Gtk, Gst, GstPbutils, Gdk, GLib
 
 from sys import argv, exit
 
@@ -105,8 +105,7 @@ class MainWindow:
         self.commands_list_load()
         self.command_menu_update()
 
-        ipc_thread = threading.Thread(target=self.ipc, daemon=True)
-        ipc_thread.start()
+        threading.Thread(target=self.ipc, daemon=True).start()
 
         self.load_db()
 
@@ -136,14 +135,14 @@ class MainWindow:
         while True:
             conn, addr = ipc_socket.accept()
             dat = conn.recv(1024).decode()
-            print(dat)
+            print("Received:", dat)
             self.window.present()
             if re_url.match(dat):
-                self.add_station(dat)
+                GLib.idle_add(self.add_station, dat)
             elif path.isfile(dat):
-                self.add_from_file(dat)
+                GLib.idle_add(self.add_from_file, dat)
             else:
-                print("Nothing to open")
+                print("No URL or file to open")
 
     def load_db(self):
         db_path = path.expanduser("~/.config/streams/stations.xml")
@@ -861,31 +860,37 @@ class MainWindow:
         match = self.parse_playlist(data, mime)
 
         if len(match) > 1:
-            build = Gtk.Builder()
-            build.add_from_file(glade_loc)
+            dialog = Gtk.Dialog("Multiple entries", self.window)
+            dialog.add_button(Gtk.STOCK_CANCEL, -6)
+            dialog.add_button("Add selected", -5)
+            if not file:
+                dialog.add_button("Keep playlist", 1)
 
-            dialog = build.get_object("win_multi_playlist")
-            select = build.get_object("selection_stations")
-            text = build.get_object("label_mp")
-
-            if file:
-                b_keep = build.get_object("button_mp_keep")
-                b_keep.set_sensitive(False)
-
-            text.set_text("Playlist\n{}\nhas several entries.\nPlease select which one(s) you want to add.".format(location))
-
-            stations_list = build.get_object("stations")
-
+            stations = Gtk.ListStore(str, str)
             for station in match:
-                stations_list.append(station)
+                stations.append(station)
+
+            view = Gtk.TreeView(stations)
+            view.show()
+
+            select = view.get_selection()
+            select.set_mode(Gtk.SelectionMode.MULTIPLE)
+
+            col = Gtk.TreeViewColumn(None, Gtk.CellRendererText(), text=0)
+            view.append_column(col)
+
+            scroll_area = Gtk.ScrolledWindow()
+            scroll_area.add(view)
+            scroll_area.show()
+
+            dialog.vbox.pack_start(scroll_area, True, True, 5)
 
             response = dialog.run()
-            print("add_playlist response", response)
+
             if response == -5:
                 model, pathlist = select.get_selected_rows()
-
                 for row in pathlist:
-                    self.add_station(stations_list[row][1])
+                    self.add_station(stations[row][1])
 
             elif response == 1:
                 self.add_url(location)
