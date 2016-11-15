@@ -24,6 +24,8 @@ from subprocess import Popen, PIPE, DEVNULL
 
 from collections import OrderedDict
 
+import random
+
 import json
 
 import threading
@@ -53,8 +55,6 @@ audio_types = ["audio/mpeg",
                "audio/ogg"
                "audio/aac",
                "audio/aacp"]
-
-ipc_port = 10101
 
 
 class MainWindow:
@@ -120,13 +120,23 @@ class MainWindow:
                 self.add_from_file(argv[1])
 
     def ipc(self):
+        ipc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ipc_port = 10101
+        bound = False
+        while not bound:
+            ipc_port = random.randint(10000, 60000)
+            print("Trying to bind on port", ipc_port)
+            try:
+                ipc_socket.bind(("localhost", ipc_port))
+            except socket.error as err:
+                print("Couldn't bind listen port at", ipc_port, "=>", err)
+            else:
+                print("Bound on port", ipc_port)
+                bound = True
+
         file_path = path.expanduser("~/.cache/streams_port")
         if not path.exists(path.dirname(file_path)):
             makedirs(path.dirname(file_path))
-
-        # TODO loop in case default port is already taken
-        ipc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        ipc_socket.bind(("localhost", ipc_port))
         ipc_file = open(file_path, "w")
         ipc_file.write(str(ipc_port))
         ipc_file.close()
@@ -1052,13 +1062,13 @@ if __name__ == '__main__':
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.connect(("localhost", ipc_port))
-            s.send(data.encode())
-            s.close()
-        except:
-            print("Couldn't connect to a running Streams instance")
+        except socket.error as err:
+            print("Couldn't connect to a running Streams instance:", err, "(Probably not a real error")
             pass
         else:
-            exit()
+            s.send(data.encode())
+            s.close()
+            exit(0)
 
     GObject.threads_init()
     Gst.init(None)
