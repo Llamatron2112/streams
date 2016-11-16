@@ -171,7 +171,16 @@ class MainWindow:
             row.append(server.get("codec"))
             row.append(int(server.get("bitrate")))
             row.append(int(server.get("sample")))
-            row.append(server.get("folder") == "True")
+
+            is_server = server.get("folder") == "True"
+            row.append(is_server)
+
+            if is_server:
+                weight = 700
+            else:
+                weight = 400
+
+            row.append(weight)
 
             parent_path = server.get("parent")
             if parent_path == "":
@@ -189,6 +198,9 @@ class MainWindow:
         return
 
     def on_activation(self, text, path, column):
+        if self.bookmarks[path][7]:
+            return
+
         url = self.bookmarks[path][1]
         cmd = text.get_text().format(url)
         print(cmd)

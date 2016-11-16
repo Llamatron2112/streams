@@ -20,6 +20,8 @@
       <column type="gint"/>
       <!-- column-name folder -->
       <column type="gboolean"/>
+      <!-- column-name weight -->
+      <column type="gint"/>
     </columns>
   </object>
   <object class="GtkMenu" id="menu_window">
@@ -72,6 +74,7 @@
                           <object class="GtkCellRendererText" id="column_name"/>
                           <attributes>
                             <attribute name="text">0</attribute>
+                            <attribute name="weight">8</attribute>
                           </attributes>
                         </child>
                       </object>
