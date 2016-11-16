@@ -34,7 +34,7 @@ import socket
 
 glade_loc = "{}/streams.glade".format(path.dirname(__file__))
 
-url_regex = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)"
+url_regex = r"(?i)\b((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))*\))+(?:\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'\".,<>?«»“”‘’]))"
 re_url = re.compile(url_regex)
 
 re_m3u_url = re_url
@@ -987,6 +987,15 @@ class MainWindow:
                 result.append(row)
 
             print("Parsed with", len(result), "entries")
+
+        else:
+            print("Parsing raw urls")
+            match = re_url.findall(data)
+            print(match)
+            for url in match:
+                print(url)
+                row = (url, url)
+                result.append(row)
 
         return result
 
