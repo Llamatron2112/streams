@@ -274,14 +274,14 @@ class MainWindow:
             dialog.destroy()
 
             if fol_name != "":
-                row = [fol_name, "", "", "","", 0, 0, True]
+                row = [fol_name, "", "", "","", 0, 0, True, 700]
                 self.bookmarks.append(None, row)
                 self.save_db()
                 print("Added folder", fol_name)
         return
 
-    def add_station(self, url):
-        print("Adding", url)
+    def add_station(self, url, parent=None):
+        print("Adding", url, "with parent", parent)
         content_type = None
 
         try:
@@ -305,7 +305,7 @@ class MainWindow:
         except http.client.BadStatusLine as err:
             if err.line == 'ICY 200 OK\r\n':
                 print("ICY 200 match")
-                self.add_url(url)
+                self.add_audio(url, parent)
                 return
 
         if content_type in pl_types:
@@ -317,22 +317,21 @@ class MainWindow:
         elif content_type in audio_types:
             response.close()
             print("Identified as audio")
-            self.add_url(url)
+            self.add_audio(url, parent)
 
         else:
+            response.close()
             self.error_popup("Unknown content type: {}".format(content_type))
 
+        self.save_db()
         return
 
-    def add_url(self, url):
+    def add_audio(self, url, parent=None):
         infos = self.fetch_infos(url)
         infos.append(False)
-        print("Adding", url, "with", infos)
-        new_row = self.bookmarks.append(None, infos)
-        self.selection.select_iter(new_row)
-        self.on_selection_change(self.selection)
-        self.treeview.scroll_to_cell(self.selection.get_selected_rows()[1][0])
-        self.save_db()
+        infos.append(400)
+        print("Adding", url, "under", parent,"with", infos)
+        self.bookmarks.append(parent, infos)
         return
 
     def on_edit(self, button):
@@ -885,6 +884,8 @@ class MainWindow:
             dialog = Gtk.Dialog("Multiple entries", self.window)
             dialog.add_button(Gtk.STOCK_CANCEL, -6)
             dialog.add_button("Add selected", -5)
+            dialog.add_button("Create Folder", 2)
+
             if not file:
                 dialog.add_button("Keep playlist", 1)
 
@@ -914,16 +915,45 @@ class MainWindow:
                 for row in pathlist:
                     self.add_station(stations[row][1])
 
+            if response == 2:
+                fold_dialog = Gtk.MessageDialog(self.window,
+                                                0,
+                                                Gtk.MessageType.QUESTION,
+                                                Gtk.ButtonsType.OK_CANCEL,
+                                                "Enter the new folder's name"
+                                                )
+                text_fold = Gtk.Entry()
+                text_fold.set_activates_default(Gtk.ResponseType.OK)
+                text_fold.show()
+                area = fold_dialog.get_content_area()
+                area.add(text_fold)
+
+                fol_name = ""
+
+                fold_response = fold_dialog.run()
+
+                if fold_response == -5:
+                    fol_name = text_fold.get_text()
+
+                fold_dialog.destroy()
+
+                if fol_name != "":
+                    fold_row = [fol_name, "", "", "", "", 0, 0, True, 700]
+                    parent = self.bookmarks.append(None, fold_row)
+                    print("Added folder", fol_name)
+
+                    model, pathlist = select.get_selected_rows()
+                    for row in pathlist:
+                        self.add_station(stations[row][1], parent)
+
             elif response == 1:
-                self.add_url(location)
+                self.add_audio(location)
 
             dialog.destroy()
-
         elif len(match) == 1 and not file:
-            self.add_url(location)
-
+            self.add_audio(location)
         elif len(match) == 1 and file:
-            self.add_url(match[0][1])
+            self.add_audio(match[0][1])
 
         return
 
