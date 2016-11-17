@@ -52,9 +52,12 @@ pl_types = ["audio/x-scpls",
 
 audio_types = ["audio/mpeg",
                "application/ogg",
-               "audio/ogg"
+               "audio/ogg",
                "audio/aac",
                "audio/aacp"]
+
+hls_types = ["application/vnd.apple.mpegurl",
+             "application/x-mpegurl"]
 
 
 class MainWindow:
@@ -319,6 +322,11 @@ class MainWindow:
             print("Identified as audio")
             self.add_audio(url, parent)
 
+        elif content_type in hls_types:
+            response.close()
+            print("Identified as HLS")
+            self.add_hls(url, parent)
+
         else:
             response.close()
             self.error_popup("Unknown content type: {}".format(content_type))
@@ -332,6 +340,18 @@ class MainWindow:
         infos.append(400)
         print("Adding", url, "under", parent,"with", infos)
         self.bookmarks.append(parent, infos)
+        return
+
+    def add_hls(self, url, parent=None):
+        infos = str(urllib.request.urlopen(url).read(), "utf-8")
+        print(infos)
+        br = re.findall(r"BANDWIDTH=(\d*)", infos)
+        bitrate = int(br[0]) / 1000
+        cod = re.findall(r"CODECS=\"(.*)\"", infos)
+        codec = cod[0]
+        row = (url, url, "", "", codec, bitrate, 0, False, 400)
+        print(row)
+        self.bookmarks.append(parent, row)
         return
 
     def on_edit(self, button):
@@ -984,9 +1004,6 @@ class MainWindow:
                 row = {id: url}
                 locs.update(row)
 
-            print(tits)
-            print(locs)
-
             for i in range(1, entries + 1):
                 if len(tits) == len(locs):
                     row = (tits[i], locs[i])
@@ -1044,6 +1061,11 @@ class MainWindow:
     def add_from_file(self, location):
         mime = mimetypes.guess_type(location)
         print("mime", mime)
+        if mime[0] in hls_types:
+            self.error_popup("HLS streams can't be added from a file\n"
+                             "Please copy/paste the link")
+            return
+
         file = open(location, "r")
         data = file.read()
         file.close()
