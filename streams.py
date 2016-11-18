@@ -885,8 +885,12 @@ class MainWindow:
                 print("Audio type match")
                 break
 
+            if content_type in hls_types:
+                print("HLS type match")
+                return "Error"
+
             if new_url == "fresh":
-                self.error_popup("Couldn't find audio stream info")
+                self.error_popup("Couldn't find audio stream")
                 return "error"
 
             i += 1
@@ -1131,7 +1135,7 @@ if __name__ == '__main__':
             data = argv[1]
         else:
             data = ""
-        
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.connect(("localhost", ipc_port))
