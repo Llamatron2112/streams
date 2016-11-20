@@ -707,6 +707,7 @@ class MainWindow:
         area = dialog.get_content_area()
         dialog.format_secondary_text("Give a name for this action")
         text = Gtk.Entry()
+        text.set_activates_default(Gtk.ResponseType.OK)
         area.add(text)
         text.show()
         dialog.set_default_response(Gtk.ResponseType.OK)
@@ -930,6 +931,9 @@ class MainWindow:
             scroll_area.add(view)
             scroll_area.show()
 
+            dialog.set_default_response(Gtk.ResponseType.OK)
+            dialog.set_default_size(400, 300)
+
             dialog.vbox.pack_start(scroll_area, True, True, 5)
 
             response = dialog.run()
@@ -951,6 +955,7 @@ class MainWindow:
                 text_fold.show()
                 area = fold_dialog.get_content_area()
                 area.add(text_fold)
+                fold_dialog.set_default_response(Gtk.ResponseType.OK)
 
                 fol_name = ""
 
