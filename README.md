@@ -9,7 +9,6 @@ Dependencies you might need:
 
 Python 3
 
-PyGTK
 
 GTK 3.0
 
