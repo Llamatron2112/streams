@@ -9,6 +9,6 @@ Dependencies you might need:
 
 Python 3
 
-GTK 3.0
+GTK 3.20
 
 Gstreamer 1.0 (with plugins)
