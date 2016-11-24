@@ -46,9 +46,9 @@ HLS_TYPES = ["application/vnd.apple.mpegurl",
 
 
 class Station:
-    def __init__(self, window, location, db, parent, file=False):
+    def __init__(self, app, location, db, parent, file=False):
         self.db = db
-        self.window = window
+        self.app = app
         self.add_station(location, parent, file)
 
     def add_station(self, location, parent=None, file=False):
@@ -56,8 +56,7 @@ class Station:
         if file:
             mime = mimetypes.guess_type(location)
             if mime[0] in HLS_TYPES:
-                self.window.error_popup("HLS streams can't be added from a file\n\nPlease copy/paste the link",
-                                        self.window)
+                self.app.error_popup("HLS streams can't be added from a file\n\nPlease copy/paste the link")
                 return
 
             file = open(location, "r")
@@ -74,8 +73,8 @@ class Station:
                 content_type = info.get_content_type()
 
             except urllib.error.HTTPError as err:
-                dialog = Gtk.MessageDialog(None,
-                                           0,
+                dialog = Gtk.MessageDialog(self.app.window,
+                                           Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                            Gtk.MessageType.ERROR,
                                            Gtk.ButtonsType.CLOSE,
                                            err.code)
@@ -105,10 +104,10 @@ class Station:
 
             else:
                 response.close()
-                self.window.error_popup("Unknown content type: {}".format(content_type), self.window)
+                self.app.error_popup("Unknown content type: {}".format(content_type))
 
     def add_url(self, url, parent=None):
-        infos = Station.fetch_infos(url)
+        infos = Station.fetch_infos(self, url)
         infos.append(False)
         infos.append(400)
         self.db.append(parent, infos)
@@ -129,7 +128,7 @@ class Station:
 
         if len(match) > 1:
             dialog = Gtk.Dialog("Multiple entries",
-                                None,
+                                self.app.window,
                                 Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT)
             dialog.add_button(Gtk.STOCK_CANCEL, -6)
             dialog.add_button("Add selected", Gtk.ResponseType.OK)
@@ -168,8 +167,8 @@ class Station:
                     self.add_station(stations[row][1])
 
             if response == 2:
-                fold_dialog = Gtk.MessageDialog(None,
-                                                0,
+                fold_dialog = Gtk.MessageDialog(dialog,
+                                                Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                                 Gtk.MessageType.QUESTION,
                                                 Gtk.ButtonsType.OK_CANCEL,
                                                 "Enter the new folder's name"
@@ -210,9 +209,8 @@ class Station:
 
         return
 
-    @staticmethod
-    def fetch_infos(url):
-        server_url = Station.dig(url, True)
+    def fetch_infos(self, url):
+        server_url = Station.dig(self, url, True)
         if server_url == "error":
             return "error"
 
@@ -248,8 +246,7 @@ class Station:
 
         return dat
 
-    @staticmethod
-    def dig(url, recursive):
+    def dig(self, url, recursive):
         new_url = "fresh"
         i = 0
         while url != new_url and i < 5:
@@ -263,8 +260,8 @@ class Station:
                 info = response.info()
                 content_type = info.get_content_type()
             except urllib.error.HTTPError as err:
-                dialog = Gtk.MessageDialog(None,
-                                           0,
+                dialog = Gtk.MessageDialog(self.app.window,
+                                           Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                            Gtk.MessageType.ERROR,
                                            Gtk.ButtonsType.CLOSE,
                                            err.code)
@@ -304,7 +301,6 @@ class Station:
 
         return url
 
-    @staticmethod
     def parse_playlist(data, mime):
         result = []
 

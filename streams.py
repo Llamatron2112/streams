@@ -89,7 +89,7 @@ class MainWindow:
 
         if len(argv) > 1:
             if RE_URL.match(argv[1]):
-                self.add_station(argv[1])
+                self.create_station(argv[1])
             else:
                 self.add_from_file(argv[1])
 
@@ -120,7 +120,7 @@ class MainWindow:
             dat = conn.recv(1024).decode()
             self.window.present()
             if RE_URL.match(dat):
-                GLib.idle_add(self.add_station, dat)
+                GLib.idle_add(self.create_station, dat)
             elif path.isfile(dat):
                 GLib.idle_add(self.add_from_file, dat)
             else:
@@ -188,7 +188,7 @@ class MainWindow:
 
     def on_add_clicked(self, button):
         choice_dial = Gtk.MessageDialog(self.window,
-                                        0,
+                                        Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                         Gtk.MessageType.QUESTION,
                                         ("Station", 1, "Folder", 2),
                                         "Do you want to add a station or a folder ?")
@@ -207,7 +207,7 @@ class MainWindow:
 
     def add_url(self, widget=None):
         dialog = Gtk.MessageDialog(self.window,
-                                   0,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                    Gtk.MessageType.QUESTION,
                                    Gtk.ButtonsType.OK_CANCEL,
                                    "Enter the new station's URL"
@@ -227,8 +227,10 @@ class MainWindow:
 
         dialog.destroy()
 
-        if new_url != "":
-            self.add_station(new_url)
+        if RE_URL.match(new_url):
+            self.create_station(new_url)
+        else:
+            self.error_popup("Invalid URL")
 
         return
 
@@ -263,11 +265,12 @@ class MainWindow:
 
     def add_from_file(self, location):
         Station(self, location, self.bookmarks, None, True)
+        self.save_db()
         return
 
     def add_folder(self, widget=None):
         dialog = Gtk.MessageDialog(self.window,
-                                   0,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                    Gtk.MessageType.QUESTION,
                                    Gtk.ButtonsType.OK_CANCEL,
                                    "Enter the new folder's name"
@@ -294,7 +297,7 @@ class MainWindow:
 
         return
 
-    def add_station(self, url, parent=None):
+    def create_station(self, url, parent=None):
         Station(self, url, self.bookmarks, parent)
         self.save_db()
         return
@@ -306,7 +309,7 @@ class MainWindow:
     def on_delete(self, text):
         name = text.get_text()
         dialog = Gtk.MessageDialog(self.window,
-                                   0,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                    Gtk.MessageType.QUESTION,
                                    Gtk.ButtonsType.OK_CANCEL,
                                    "Delete {} ?".format(name))
@@ -361,7 +364,7 @@ class MainWindow:
 
     def on_dig(self, text):
         url = text.get_text()
-        new_url = Station.dig(url, True)
+        new_url = Station.dig(self, url, True)
         if new_url != "error":
             text.set_text(new_url)
 
@@ -369,7 +372,7 @@ class MainWindow:
 
     def on_autofill(self, text):
         url = text.get_text()
-        data = Station.fetch_infos(url)
+        data = Station.fetch_infos(self, url)
 
         if data == "error":
             return
@@ -606,7 +609,7 @@ class MainWindow:
 
     def command_save(self, item):
         dialog = Gtk.MessageDialog(self.window,
-                                   0,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                    Gtk.MessageType.QUESTION,
                                    Gtk.ButtonsType.OK_CANCEL,
                                    "Saving a new command line")
@@ -630,7 +633,7 @@ class MainWindow:
 
         if name in self.list_commands:
             dialog = Gtk.MessageDialog(self.window,
-                                       0,
+                                       Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                        Gtk.MessageType.QUESTION,
                                        Gtk.ButtonsType.OK_CANCEL,
                                        "A command with that name already exists")
@@ -653,7 +656,7 @@ class MainWindow:
         for key in self.list_commands.keys():
             if self.list_commands[key] == cmd:
                 dialog = Gtk.MessageDialog(self.window,
-                                           0,
+                                           Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                            Gtk.MessageType.QUESTION,
                                            Gtk.ButtonsType.OK_CANCEL,
                                            "You are about to delete an existing command")
@@ -731,9 +734,8 @@ class MainWindow:
 
         return
 
-    @staticmethod
-    def error_popup(err, parent=None):
-        dialog = Gtk.MessageDialog(parent,
+    def error_popup(self, err):
+        dialog = Gtk.MessageDialog(self.window,
                                    (Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT),
                                    Gtk.MessageType.ERROR,
                                    Gtk.ButtonsType.CLOSE,
@@ -826,7 +828,7 @@ class MainWindow:
 
         if path.isfile(file):
             dial = Gtk.MessageDialog(self.window,
-                                     0,
+                                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                      Gtk.MessageType.QUESTION,
                                      Gtk.ButtonsType.OK_CANCEL,
                                      "{}\n\nFile already exists, overwrite ?".format(file)
