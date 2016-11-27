@@ -365,10 +365,7 @@ class MainWindow:
     def on_dig(self, text):
         url = text.get_text()
         new_url = Station.dig(self.window, url, False)
-        if new_url == "error":
-            self.error_popup("An error happened")
-            return
-
+        print(new_url)
         if type(new_url) is str:
             text.set_text(new_url)
 

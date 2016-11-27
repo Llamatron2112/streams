@@ -137,10 +137,10 @@ class Station:
                 for row in response[1]:
                     self.add_station(row, par)
 
-            elif not response:
+            elif response == "cancel":
                 return
 
-            elif response:
+            elif response == "keep":
                 self.add_url(location, parent)
 
         elif len(match) == 1 and not file:
@@ -223,11 +223,13 @@ class Station:
                 match = Station.parse_playlist(data, content_type)
                 if len(match) > 1 and not recursive:
                     result = Station.playlist_selecter(window, match)
-                    res = []
-                    if result:
+                    if result == "cancel":
+                        return
+                    elif result == "keep":
+                        return url
+                    elif type(result) is list:
                         for row in result[1]:
                             res.append(row)
-
                         return result[0], res
 
                 else:
@@ -395,8 +397,6 @@ class Station:
             fold_dialog.destroy()
 
             if fol_name != "":
-                # fold_row = [fol_name, "", "", "", "", 0, 0, True, 700]
-                # parent = self.db.append(None, fold_row)
                 model, pathlist = select.get_selected_rows()
                 for row in pathlist:
                     result.append(stations[row][1])
@@ -406,8 +406,8 @@ class Station:
 
         elif response == 1:
             dialog.destroy()
-            return True
+            return "keep"
 
         elif response == Gtk.ResponseType.CANCEL:
             dialog.destroy()
-            return False
+            return "cancel"
