@@ -364,9 +364,31 @@ class MainWindow:
 
     def on_dig(self, text):
         url = text.get_text()
-        new_url = Station.dig(self, url, True)
-        if new_url != "error":
+        new_url = Station.dig(self.window, url, False)
+        if new_url == "error":
+            self.error_popup("An error happened")
+            return
+
+        if type(new_url) is str:
             text.set_text(new_url)
+
+        elif type(new_url) is tuple:
+            if len(new_url[1]) == 1:
+                text.set_text(new_url[1][0])
+            else:
+                if new_url[0] is not None:
+                    par_row = [new_url[0], "", "", "", "", 0, 0, True, 700]
+                    parent = self.bookmarks.append(None, par_row)
+                else:
+                    parent = None
+
+                for url in new_url[1]:
+                    self.create_station(url, parent)
+
+                self.edit_mode(False)
+                self.load_selection_data()
+
+                self.error_popup("Multiple stations added,\nsource station has not been changed")
 
         return
 

@@ -127,83 +127,25 @@ class Station:
         match = Station.parse_playlist(data, mime)
 
         if len(match) > 1:
-            dialog = Gtk.Dialog("Multiple entries",
-                                self.app.window,
-                                Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT)
-            dialog.add_button(Gtk.STOCK_CANCEL, -6)
-            dialog.add_button("Add selected", Gtk.ResponseType.OK)
-            dialog.add_button("Create Folder", 2)
+            response = Station.playlist_selecter(self.app.window, match, file)
+            if type(response) is tuple:
+                if response[0] is not None:
+                    par_row = [response[0], "", "", "", "", 0, 0, True, 700]
+                    par = self.db.append(None, par_row)
+                else:
+                    par = None
+                for row in response[1]:
+                    self.add_station(row, par)
 
-            if not file:
-                dialog.add_button("Keep playlist", 1)
+            elif not response:
+                return
 
-            stations = Gtk.ListStore(str, str)
-            for station in match:
-                stations.append(station)
-
-            view = Gtk.TreeView(stations)
-            view.show()
-
-            select = view.get_selection()
-            select.set_mode(Gtk.SelectionMode.MULTIPLE)
-
-            col = Gtk.TreeViewColumn(None, Gtk.CellRendererText(), text=0)
-            view.append_column(col)
-
-            scroll_area = Gtk.ScrolledWindow()
-            scroll_area.add(view)
-            scroll_area.show()
-
-            dialog.set_default_response(Gtk.ResponseType.OK)
-            dialog.set_default_size(400, 300)
-
-            dialog.vbox.pack_start(scroll_area, True, True, 5)
-
-            response = dialog.run()
-
-            if response == Gtk.ResponseType.OK:
-                model, pathlist = select.get_selected_rows()
-                for row in pathlist:
-                    self.add_station(stations[row][1])
-
-            if response == 2:
-                fold_dialog = Gtk.MessageDialog(dialog,
-                                                Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                                Gtk.MessageType.QUESTION,
-                                                Gtk.ButtonsType.OK_CANCEL,
-                                                "Enter the new folder's name"
-                                                )
-                text_fold = Gtk.Entry()
-                text_fold.set_activates_default(Gtk.ResponseType.OK)
-                text_fold.show()
-                area = fold_dialog.get_content_area()
-                area.add(text_fold)
-                fold_dialog.set_default_response(Gtk.ResponseType.OK)
-
-                fol_name = ""
-
-                fold_response = fold_dialog.run()
-
-                if fold_response == Gtk.ResponseType.OK:
-                    fol_name = text_fold.get_text()
-
-                fold_dialog.destroy()
-
-                if fol_name != "":
-                    fold_row = [fol_name, "", "", "", "", 0, 0, True, 700]
-                    parent = self.db.append(None, fold_row)
-
-                    model, pathlist = select.get_selected_rows()
-                    for row in pathlist:
-                        self.add_station(stations[row][1], parent)
-
-            elif response == 1:
-                self.add_url(location)
-
-            dialog.destroy()
+            elif response:
+                self.add_url(location, parent)
 
         elif len(match) == 1 and not file:
             self.add_url(location, parent)
+
         elif len(match) == 1 and file:
             self.add_url(match[0][1], parent)
 
@@ -246,7 +188,8 @@ class Station:
 
         return dat
 
-    def dig(self, url, recursive):
+    @staticmethod
+    def dig(window, url, recursive):
         new_url = "fresh"
         i = 0
         while url != new_url and i < 5:
@@ -260,7 +203,7 @@ class Station:
                 info = response.info()
                 content_type = info.get_content_type()
             except urllib.error.HTTPError as err:
-                dialog = Gtk.MessageDialog(self.app.window,
+                dialog = Gtk.MessageDialog(window,
                                            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                            Gtk.MessageType.ERROR,
                                            Gtk.ButtonsType.CLOSE,
@@ -276,23 +219,35 @@ class Station:
 
             if content_type in PL_TYPES:
                 data = str(response.read(), "utf-8")
-                match = Station.parse_playlist(data, content_type)
                 response.close()
+                match = Station.parse_playlist(data, content_type)
+                if len(match) > 1 and not recursive:
+                    result = Station.playlist_selecter(window, match)
+                    res = []
+                    if result:
+                        for row in result[1]:
+                            res.append(row)
 
-                if len(match) > 0 and new_url != "fresh" and not recursive:
-                    Station.add_playlist(url, data, content_type, False)
-                    return
+                        return result[0], res
+
                 else:
                     new_url = match[0][1]
+                    if new_url is None:
+                        # Empty playlist
+                        return "error"
 
             if content_type in AUDIO_TYPES:
                 break
 
             if content_type in HLS_TYPES:
-                return "Error"
+                return "error"
 
             if new_url == "fresh":
+                # No new url
                 return "error"
+
+            if not recursive and new_url != url:
+                return new_url
 
             i += 1
 
@@ -301,6 +256,7 @@ class Station:
 
         return url
 
+    @staticmethod
     def parse_playlist(data, mime):
         result = []
 
@@ -369,3 +325,89 @@ class Station:
                 result.append(row)
 
         return result
+
+    @staticmethod
+    def playlist_selecter(window, match, file=False):
+        dialog = Gtk.Dialog("Multiple entries",
+                            window,
+                            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT)
+        dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        dialog.add_button("Add selected", Gtk.ResponseType.OK)
+        dialog.add_button("Create Folder", 2)
+
+        if not file:
+            dialog.add_button("Keep playlist", 1)
+
+        stations = Gtk.ListStore(str, str)
+        for station in match:
+            stations.append(station)
+
+        view = Gtk.TreeView(stations)
+        view.show()
+
+        select = view.get_selection()
+        select.set_mode(Gtk.SelectionMode.MULTIPLE)
+
+        col = Gtk.TreeViewColumn(None, Gtk.CellRendererText(), text=0)
+        view.append_column(col)
+
+        scroll_area = Gtk.ScrolledWindow()
+        scroll_area.add(view)
+        scroll_area.show()
+
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        dialog.set_default_size(400, 300)
+
+        dialog.vbox.pack_start(scroll_area, True, True, 5)
+
+        response = dialog.run()
+
+        result = []
+
+        if response == Gtk.ResponseType.OK:
+            model, pathlist = select.get_selected_rows()
+            for row in pathlist:
+                result.append(stations[row][1])
+
+            dialog.destroy()
+            return None, result
+
+        elif response == 2:
+            fold_dialog = Gtk.MessageDialog(dialog,
+                                            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                            Gtk.MessageType.QUESTION,
+                                            Gtk.ButtonsType.OK_CANCEL,
+                                            "Enter the new folder's name"
+                                            )
+            text_fold = Gtk.Entry()
+            text_fold.set_activates_default(Gtk.ResponseType.OK)
+            text_fold.show()
+            area = fold_dialog.get_content_area()
+            area.add(text_fold)
+            fold_dialog.set_default_response(Gtk.ResponseType.OK)
+
+            fol_name = ""
+            fold_response = fold_dialog.run()
+
+            if fold_response == Gtk.ResponseType.OK:
+                fol_name = text_fold.get_text()
+
+            fold_dialog.destroy()
+
+            if fol_name != "":
+                # fold_row = [fol_name, "", "", "", "", 0, 0, True, 700]
+                # parent = self.db.append(None, fold_row)
+                model, pathlist = select.get_selected_rows()
+                for row in pathlist:
+                    result.append(stations[row][1])
+
+                dialog.destroy()
+                return fol_name, result
+
+        elif response == 1:
+            dialog.destroy()
+            return True
+
+        elif response == Gtk.ResponseType.CANCEL:
+            dialog.destroy()
+            return False
