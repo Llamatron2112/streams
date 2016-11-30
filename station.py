@@ -163,18 +163,17 @@ class Station:
         web = ""
 
         tags = info.get_tags()
-        n = tags.n_tags() - 1
+        n = tags.n_tags()
         for i in range(0, n):
             tag = tags.nth_tag_name(i)
+            value = tags.get_string(tag)[1]
+            print(i, ":", tag, "-->", value)
             if tag == "organization":
-                name = tags.get_string(tag)[1]
+                name = value
             elif tag == "genre":
-                genres = tags.get_string(tag)[1]
+                genres = value
             elif tag == "location":
-                web = tags.get_string(tag)[1]
-
-        if name == "" or name is None:
-            name = url
+                web = value
 
         stream_list = info.get_stream_list()
         audio_stream = stream_list[0]
@@ -183,6 +182,24 @@ class Station:
 
         caps = audio_stream.get_caps()
         codec = GstPbutils.pb_utils_get_codec_description(caps)
+
+        if bitrate == 0 or name == "" or name is None:
+            req = urllib.request.urlopen(url)
+            head = req.info()._headers
+            print(head)
+            for tag in head:
+                if tag[0] == "icy-name":
+                    name = tag[1]
+                elif tag[0] == "icy-genre":
+                    genres = tag[1]
+                elif tag[0] == "icy-br":
+                    bitrate = int(tag[1])
+                elif tag[0] == "icy-url":
+                    web = tag[1]
+            req.close()
+
+        if name == "" or name is None:
+            name = url
 
         dat = [name, url, genres, web, codec, bitrate, sample]
 

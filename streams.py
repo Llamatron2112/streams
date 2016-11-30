@@ -365,7 +365,6 @@ class MainWindow:
     def on_dig(self, text):
         url = text.get_text()
         new_url = Station.dig(self.window, url, False)
-        print(new_url)
         if type(new_url) is str:
             text.set_text(new_url)
 
@@ -555,8 +554,6 @@ class MainWindow:
         server.set("parent", parent)
 
     def save_db(self, db=None, a=None, b=None):
-        print("Saving DB")
-
         stations = Et.Element("stations")
 
         self.bookmarks.foreach(self.add_row_to_db, stations)
