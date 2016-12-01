@@ -9,6 +9,8 @@ from http.client import error
 import urllib
 from urllib import request, error
 
+from subprocess import getoutput
+
 import re
 
 from xml.etree import ElementTree as Et
@@ -44,6 +46,7 @@ AUDIO_TYPES = ["audio/mpeg",
 HLS_TYPES = ["application/vnd.apple.mpegurl",
              "application/x-mpegurl"]
 
+FFMPEG = False
 
 class Station:
     def __init__(self, app, location, db, parent, file=False):
@@ -119,7 +122,7 @@ class Station:
         bitrate = int(br[0]) / 1000
         cod = re.findall(r"CODECS=\"(.*)\"", infos)
         codec = cod[0]
-        row = (url, url, "", "", codec, bitrate, 0, False, 400)
+        row = (url, url, "", "", codec, bitrate, "", False, 400)
         self.db.append(parent, row)
         return
 
@@ -130,7 +133,7 @@ class Station:
             response = Station.playlist_selecter(self.app.window, match, file)
             if type(response) is tuple:
                 if response[0] is not None:
-                    par_row = [response[0], "", "", "", "", 0, 0, True, 700]
+                    par_row = [response[0], "", "", "", "", "", "", True, 700]
                     par = self.db.append(None, par_row)
                 else:
                     par = None
@@ -156,7 +159,17 @@ class Station:
         if server_url == "error":
             return "error"
 
-        info = GstPbutils.Discoverer().discover_uri(server_url)
+        if FFMPEG:
+            data = Station.fetch_ffmpeg(server_url)
+        else:
+            data = Station.fetch_gst(server_url)
+
+        return data
+
+    @staticmethod
+    def fetch_gst(url):
+
+        info = GstPbutils.Discoverer().discover_uri(url)
 
         name = ""
         genres = ""
@@ -177,13 +190,13 @@ class Station:
 
         stream_list = info.get_stream_list()
         audio_stream = stream_list[0]
-        bitrate = int(audio_stream.get_bitrate() / 1000)
-        sample = int(audio_stream.get_sample_rate())
+        bitrate = str(int(audio_stream.get_bitrate() / 1000))
+        sample = str(audio_stream.get_sample_rate())
 
         caps = audio_stream.get_caps()
         codec = GstPbutils.pb_utils_get_codec_description(caps)
 
-        if bitrate == 0 or name == "" or name is None:
+        if bitrate == "0" or name == "" or name is None:
             req = urllib.request.urlopen(url)
             head = req.info()._headers
             print(head)
@@ -193,15 +206,59 @@ class Station:
                 elif tag[0] == "icy-genre":
                     genres = tag[1]
                 elif tag[0] == "icy-br":
-                    bitrate = int(tag[1])
+                    bitrate = tag[1]
                 elif tag[0] == "icy-url":
                     web = tag[1]
             req.close()
+
+        if bitrate == "0":
+            bitrate = "N/A"
 
         if name == "" or name is None:
             name = url
 
         dat = [name, url, genres, web, codec, bitrate, sample]
+
+        return dat
+
+    @staticmethod
+    def fetch_ffmpeg(url):
+        text = getoutput("ffprobe {}".format(url))
+        lines = str.splitlines(text)
+
+        values = {}
+        values.update({"br": ""})
+        values.update({"name": ""})
+        values.update({"genre": ""})
+        values.update({"url": ""})
+
+        for line in lines:
+            match = re.search(r"icy-([a-zA-Z0-9]+)\s+:\s+(.*)", line)
+            if match is not None:
+                print(match.group(1), ":", match.group(2))
+                values.update({match.group(1): match.group(2)})
+
+        m_audio = re.search(r"Stream #0:0.*Audio: (.*), ([0-9]+) Hz", text)
+        values.update({"codec": m_audio.group(1)})
+        values.update({"sample": m_audio.group(2)})
+
+        if values["br"] == "":
+            m_br = re.search(r"Duration.* bitrate: (.*)(?: kb/s)?", text)
+            if m_br is None:
+                values.update({"br": "N/A"})
+            else:
+                values.update({"br": m_br.group(1)})
+
+        if values["name"] == "":
+            values.update({"name": url})
+
+        dat = [values["name"],
+               url,
+               values["genre"],
+               values["url"],
+               values["codec"],
+               values["br"],
+               values["sample"]]
 
         return dat
 

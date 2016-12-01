@@ -15,9 +15,9 @@
       <!-- column-name codec -->
       <column type="gchararray"/>
       <!-- column-name bitrate -->
-      <column type="gint"/>
+      <column type="gchararray"/>
       <!-- column-name samplerate -->
-      <column type="gint"/>
+      <column type="gchararray"/>
       <!-- column-name folder -->
       <column type="gboolean"/>
       <!-- column-name weight -->

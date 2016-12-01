@@ -141,8 +141,8 @@ class MainWindow:
             row.append(server.get("genres"))
             row.append(server.get("web"))
             row.append(server.get("codec"))
-            row.append(int(server.get("bitrate")))
-            row.append(int(server.get("sample")))
+            row.append(server.get("bitrate"))
+            row.append(server.get("sample"))
 
             is_server = server.get("folder") == "True"
             row.append(is_server)
@@ -291,7 +291,7 @@ class MainWindow:
         dialog.destroy()
 
         if fol_name != "":
-            row = [fol_name, "", "", "", "", 0, 0, True, 700]
+            row = [fol_name, "", "", "", "", "", "", True, 700]
             self.bookmarks.append(None, row)
             self.save_db()
 
@@ -348,8 +348,8 @@ class MainWindow:
         self.bookmarks.set_value(row, 2, genres)
         self.bookmarks.set_value(row, 3, web)
         self.bookmarks.set_value(row, 4, codec)
-        self.bookmarks.set_value(row, 5, int(bitrate))
-        self.bookmarks.set_value(row, 6, int(sample))
+        self.bookmarks.set_value(row, 5, bitrate)
+        self.bookmarks.set_value(row, 6, sample)
 
         self.save_db()
 
@@ -373,7 +373,7 @@ class MainWindow:
                 text.set_text(new_url[1][0])
             else:
                 if new_url[0] is not None:
-                    par_row = [new_url[0], "", "", "", "", 0, 0, True, 700]
+                    par_row = [new_url[0], "", "", "", "", "", "", True, 700]
                     parent = self.bookmarks.append(None, par_row)
                 else:
                     parent = None
@@ -400,8 +400,8 @@ class MainWindow:
         self.builder.get_object("text_genres").set_text(data[2])
         self.builder.get_object("text_web").set_text(data[3])
         self.builder.get_object("text_codec").set_text(data[4])
-        self.builder.get_object("text_bitrate").set_text(str(data[5]))
-        self.builder.get_object("text_sample").set_text(str(data[6]))
+        self.builder.get_object("text_bitrate").set_text(data[5])
+        self.builder.get_object("text_sample").set_text(data[6])
 
         return
 
@@ -522,15 +522,15 @@ class MainWindow:
             genres = ""
             web = ""
             codec = ""
-            bitrate = 0
-            sample = 0
+            bitrate = ""
+            sample = ""
 
         text_url.set_text(url)
         text_genres.set_text(genres)
         text_web.set_text(web)
         text_codec.set_text(codec)
-        text_bitrate.set_text(str(bitrate))
-        text_sample.set_text(str(sample))
+        text_bitrate.set_text(bitrate)
+        text_sample.set_text(sample)
 
         return
 
@@ -542,8 +542,8 @@ class MainWindow:
         server.set("genres", row[2])
         server.set("web", row[3])
         server.set("codec", row[4])
-        server.set("bitrate", str(row[5]))
-        server.set("sample", str(row[6]))
+        server.set("bitrate", row[5])
+        server.set("sample", row[6])
         server.set("folder", str(row[7]))
 
         parent_iter = self.bookmarks.iter_parent(iter)
