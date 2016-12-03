@@ -13,22 +13,9 @@ from subprocess import getoutput
 
 import re
 
-from xml.etree import ElementTree as Et
-
 import mimetypes
 
-URL_REGEX = r"(?i)\b((?:[a-z][\w-]+:(?:/{1,3}|" \
-            r"[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+" \
-            r"[.][a-z]{2,4}/)(?:[^\s()<>]+|\((?:[^\s()" \
-            r"<>]+|(?:\([^\s()<>]+\)))*\))+(?:\((?:[^\s()<>]+" \
-            r"|(?:\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'\".,<>?«»“”‘’]))"
-RE_URL = re.compile(URL_REGEX)
-
-RE_M3U_URL = RE_URL
-RE_M3U_INFOS = re.compile(r"#EXTINF:-1,(.*)\n{}".format(URL_REGEX))
-
-RE_PLS_URL = re.compile(r"File(\d+)={}\n".format(URL_REGEX))
-RE_PLS_TITLE = re.compile(r"Title(\d+)=(.*)\n")
+from plparser import PlaylistParser
 
 PL_TYPES = ["audio/x-scpls",
             "audio/mpegurl",
@@ -47,6 +34,7 @@ HLS_TYPES = ["application/vnd.apple.mpegurl",
              "application/x-mpegurl"]
 
 FFMPEG = False
+
 
 class Station:
     def __init__(self, app, location, db, parent, file=False):
@@ -113,6 +101,7 @@ class Station:
         infos = Station.fetch_infos(self, url)
         infos.append(False)
         infos.append(400)
+        infos[1] = url
         self.db.append(parent, infos)
         return
 
@@ -127,7 +116,7 @@ class Station:
         return
 
     def add_playlist(self, location, data, mime, parent=None, file=False):
-        match = Station.parse_playlist(data, mime)
+        match = PlaylistParser().parse(data, mime)
 
         if len(match) > 1:
             response = Station.playlist_selecter(self.app.window, match, file)
@@ -196,25 +185,29 @@ class Station:
         caps = audio_stream.get_caps()
         codec = GstPbutils.pb_utils_get_codec_description(caps)
 
-        if bitrate == "0" or name == "" or name is None:
+        if bitrate == "0" or name == "" or genres == "" or web == "":
             req = urllib.request.urlopen(url)
-            head = req.info()._headers
-            print(head)
-            for tag in head:
-                if tag[0] == "icy-name":
-                    name = tag[1]
-                elif tag[0] == "icy-genre":
-                    genres = tag[1]
-                elif tag[0] == "icy-br":
-                    bitrate = tag[1]
-                elif tag[0] == "icy-url":
-                    web = tag[1]
+            head = req.info()
             req.close()
+            for tag in head.items():
+                match = re.match(r"ic[ey]-([a-z]+)", tag[0])
+                if match:
+                    print(match.group(1) + ": " + tag[1])
+                    tagname = match.group(1)
+                    tagvalue = tag[1]
+                    if tagname == "br" or tagname == "bitrate":
+                        bitrate = tagvalue
+                    elif tagname == "name":
+                        name = tagvalue
+                    elif tagname == "genre":
+                        genres = tagvalue
+                    elif tagname == "url":
+                        web = tagvalue
 
         if bitrate == "0":
             bitrate = "N/A"
 
-        if name == "" or name is None:
+        if name == "":
             name = url
 
         dat = [name, url, genres, web, codec, bitrate, sample]
@@ -276,6 +269,7 @@ class Station:
                 response = urllib.request.urlopen(url)
                 info = response.info()
                 content_type = info.get_content_type()
+                print(content_type)
             except urllib.error.HTTPError as err:
                 dialog = Gtk.MessageDialog(window,
                                            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -289,12 +283,13 @@ class Station:
                 return "error"
             except http.client.BadStatusLine as err:
                 if err.line == "ICY 200 OK\r\n":
+                    print("ICY 200 OK")
                     break
 
             if content_type in PL_TYPES:
                 data = str(response.read(), "utf-8")
                 response.close()
-                match = Station.parse_playlist(data, content_type)
+                match = PlaylistParser().parse(data, content_type)
                 if len(match) > 1 and not recursive:
                     result = Station.playlist_selecter(window, match)
                     if result == "cancel":
@@ -302,6 +297,7 @@ class Station:
                     elif result == "keep":
                         return url
                     elif type(result) is list:
+                        res = []
                         for row in result[1]:
                             res.append(row)
                         return result[0], res
@@ -331,76 +327,6 @@ class Station:
             return "error"
 
         return url
-
-    @staticmethod
-    def parse_playlist(data, mime):
-        result = []
-
-        if mime == "audio/x-scpls" or mime == "application/pls+xml":
-            titles = RE_PLS_TITLE.findall(data)
-            urls = RE_PLS_URL.findall(data)
-
-            ents = re.search(r"numberofentries=(\d+)", data, re.IGNORECASE)
-            entries = int(ents.group(1))
-
-            tits = {}
-            for t in titles:
-                i = int(t[0])
-                title = t[1]
-                row = {i: title}
-                tits.update(row)
-
-            locs = {}
-            for u in urls:
-                i = int(u[0])
-                url = u[1]
-                row = {i: url}
-                locs.update(row)
-
-            for i in range(1, entries + 1):
-                if len(tits) == len(locs):
-                    row = (tits[i], locs[i])
-                else:
-                    row = (locs[i], locs[i])
-
-                result.append(row)
-
-        elif mime == "audio/x-mpegurl" or mime == "audio/mpegurl":
-            if re.match(r"^#EXTM3U.*", data):
-                pairs = RE_M3U_INFOS.findall(data)
-
-                for title, url in pairs:
-                    row = (title, url)
-                    result.append(row)
-            else:
-                match = RE_URL.findall(data)
-                for url in match:
-                    row = (url, url)
-                    result.append(row)
-
-        elif mime == "application/xspf+xml":
-            root = Et.fromstring(data)
-            for track in root.iter("{http://xspf.org/ns/0/}track"):
-                loc = track.find("{http://xspf.org/ns/0/}location")
-                tit = track.find("{http://xspf.org/ns/0/}title")
-
-                location = loc.text
-
-                if tit is None:
-                    title = location
-                else:
-                    title = tit.text
-
-                row = (title, location)
-                result.append(row)
-
-        else:
-            match = RE_URL.findall(data)
-            for url in match:
-                row = (url, url)
-                result.append(row)
-
-        return result
 
     @staticmethod
     def playlist_selecter(window, match, file=False):

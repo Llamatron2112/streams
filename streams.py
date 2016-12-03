@@ -22,7 +22,8 @@ import threading
 import socket
 
 from export import Export
-from station import Station, RE_URL
+from station import Station
+from regexp import RE_URL
 
 GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 
