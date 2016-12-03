@@ -82,6 +82,6 @@ def playlist_selecter(window, match, file=False):
         dialog.destroy()
         return "keep"
 
-    elif response == Gtk.ResponseType.CANCEL:
+    elif response == Gtk.ResponseType.CANCEL or response == Gtk.ResponseType.DELETE_EVENT:
         dialog.destroy()
         return "cancel"
