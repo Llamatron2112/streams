@@ -23,7 +23,8 @@ import socket
 
 from export import Export
 from station import Station
-from regexp import RE_URL
+from constants import RE_URL
+from dig import dig
 
 GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 
@@ -365,7 +366,7 @@ class MainWindow:
 
     def on_dig(self, text):
         url = text.get_text()
-        new_url = Station.dig(self.window, url, False)
+        new_url = dig(self.window, url, False)
         if type(new_url) is str:
             text.set_text(new_url)
 
@@ -397,7 +398,7 @@ class MainWindow:
             return
 
         self.builder.get_object("text_name").set_text(data[0])
-        self.builder.get_object("text_url").set_text(data[1])
+        self.builder.get_object("text_url").set_text(url)
         self.builder.get_object("text_genres").set_text(data[2])
         self.builder.get_object("text_web").set_text(data[3])
         self.builder.get_object("text_codec").set_text(data[4])
@@ -817,15 +818,15 @@ class MainWindow:
                                       Gtk.STOCK_SAVE, Gtk.ResponseType.OK
                                       ))
 
-        filter = Gtk.FileFilter()
-        filter.set_name("pls")
-        filter.add_pattern("*.pls")
-        dial.add_filter(filter)
+        filt = Gtk.FileFilter()
+        filt.set_name("pls")
+        filt.add_pattern("*.pls")
+        dial.add_filter(filt)
 
-        filter = Gtk.FileFilter()
-        filter.set_name("m3u")
-        filter.add_pattern("*.m3u")
-        dial.add_filter(filter)
+        filt = Gtk.FileFilter()
+        filt.set_name("m3u")
+        filt.add_pattern("*.m3u")
+        dial.add_filter(filt)
 
         response = dial.run()
         file = dial.get_filename()
