@@ -1,8 +1,3 @@
-import gi
-gi.require_version("Gtk", "3.0")
-gi.require_version('GstPbutils', '1.0')
-from gi.repository import Gtk, GstPbutils
-
 import http
 from http.client import error
 
@@ -18,7 +13,6 @@ from constants import AUDIO_TYPES, PL_TYPES, HLS_TYPES
 from dig import dig
 from metadata import fetch_gst, fetch_ffmpeg
 from plselect import playlist_selecter
-
 
 FFMPEG = False
 
@@ -51,15 +45,7 @@ class Station:
                 content_type = info.get_content_type()
 
             except urllib.error.HTTPError as err:
-                dialog = Gtk.MessageDialog(self.app.window,
-                                           Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                           Gtk.MessageType.ERROR,
-                                           Gtk.ButtonsType.CLOSE,
-                                           err.code)
-                dialog.format_secondary_text(err.reason)
-                dialog.set_default_response(Gtk.ResponseType.CLOSE)
-                dialog.run()
-                dialog.destroy()
+                self.app.httperror_popup(err)
                 return
 
             except http.client.BadStatusLine as err:
@@ -132,8 +118,9 @@ class Station:
 
     def fetch_infos(self, url):
         server_url = dig(self, url, True)
-        if server_url == "error":
-            return "error"
+        if re.match("error: .*", server_url):
+            self.app.error_popup(server_url)
+            return
 
         if FFMPEG:
             data = fetch_ffmpeg(server_url)

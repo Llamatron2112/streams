@@ -1,7 +1,3 @@
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
-
 import http
 from http.client import error
 
@@ -13,11 +9,12 @@ from constants import AUDIO_TYPES, PL_TYPES, HLS_TYPES
 from plparser import PlaylistParser
 from plselect import playlist_selecter
 
+
 def dig(window, url, recursive):
     new_url = "fresh"
     i = 0
-    while url != new_url and i < 5:
-        content_type = None
+    content_type = None
+    while content_type not in AUDIO_TYPES and i < 5:
 
         if new_url != "fresh":
             url = new_url
@@ -28,20 +25,12 @@ def dig(window, url, recursive):
             content_type = info.get_content_type()
             print(content_type)
         except urllib.error.HTTPError as err:
-            dialog = Gtk.MessageDialog(window,
-                                       Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                       Gtk.MessageType.ERROR,
-                                       Gtk.ButtonsType.CLOSE,
-                                       err.code)
-            dialog.format_secondary_text(err.reason)
-            dialog.set_default_response(Gtk.ResponseType.CLOSE)
-            dialog.run()
-            dialog.destroy()
+            window.httperror_popup(err)
             return "error"
         except http.client.BadStatusLine as err:
             if err.line == "ICY 200 OK\r\n":
                 print("ICY 200 OK")
-                break
+                return url
 
         if content_type in PL_TYPES:
             data = str(response.read(), "utf-8")
@@ -62,18 +51,17 @@ def dig(window, url, recursive):
             else:
                 new_url = match[0][1]
                 if new_url is None:
-                    # Empty playlist
-                    return "error"
+                    return "error: Couldn't find an URL"
 
         if content_type in AUDIO_TYPES:
             break
 
         if content_type in HLS_TYPES:
-            return "error"
+            return "error: HLS"
 
         if new_url == "fresh":
             # No new url
-            return "error"
+            return "error: No new URL"
 
         if not recursive and new_url != url:
             return new_url

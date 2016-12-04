@@ -21,10 +21,13 @@ import threading
 
 import socket
 
+import re
+
 from export import Export
 from station import Station
 from constants import RE_URL
 from dig import dig
+from metadata import fetch_gst
 
 GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 
@@ -367,6 +370,10 @@ class MainWindow:
     def on_dig(self, text):
         url = text.get_text()
         new_url = dig(self.window, url, False)
+
+        if re.match(r"^error: .*", new_url):
+            self.error_popup(new_url)
+
         if type(new_url) is str:
             text.set_text(new_url)
 
@@ -392,10 +399,7 @@ class MainWindow:
 
     def on_autofill(self, text):
         url = text.get_text()
-        data = Station.fetch_infos(self, url)
-
-        if data == "error":
-            return
+        data = fetch_gst(url)
 
         self.builder.get_object("text_name").set_text(data[0])
         self.builder.get_object("text_url").set_text(url)
@@ -762,6 +766,17 @@ class MainWindow:
         dialog.run()
         dialog.destroy()
         return
+
+    def httperror_popup(self, err):
+        dialog = Gtk.MessageDialog(self.window,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                   Gtk.MessageType.ERROR,
+                                   Gtk.ButtonsType.CLOSE,
+                                   err.code)
+        dialog.format_secondary_text(err.reason)
+        dialog.set_default_response(Gtk.ResponseType.CLOSE)
+        dialog.run()
+        dialog.destroy()
 
     def drag_data_received(self, treeview, context, x, y, selection, info, etime):
         selec = treeview.get_selection()
