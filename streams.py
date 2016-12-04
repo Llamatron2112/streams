@@ -28,6 +28,7 @@ from station import Station
 from constants import RE_URL
 from dig import dig
 from metadata import fetch_gst
+from drag import drag
 
 GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 
@@ -187,7 +188,7 @@ class MainWindow:
                   stdout=PIPE,
                   stderr=DEVNULL)
         except FileNotFoundError as err:
-            self.error_popup(err)
+            self.popup(err)
 
         return
 
@@ -235,7 +236,7 @@ class MainWindow:
         if RE_URL.match(new_url):
             self.create_station(new_url)
         else:
-            self.error_popup("Invalid URL")
+            self.popup("Invalid URL")
 
         return
 
@@ -372,7 +373,7 @@ class MainWindow:
         new_url = dig(self.window, url, False)
 
         if re.match(r"^error: .*", new_url):
-            self.error_popup(new_url)
+            self.popup(new_url)
 
         if type(new_url) is str:
             text.set_text(new_url)
@@ -393,7 +394,7 @@ class MainWindow:
                 self.edit_mode(False)
                 self.load_selection_data()
 
-                self.error_popup("Multiple stations added,\nsource station has not been changed")
+                self.popup("Multiple stations added,\nsource station has not been changed")
 
         return
 
@@ -695,7 +696,7 @@ class MainWindow:
                 self.commands_list_save()
                 return
 
-        self.error_popup("Command doesn't match any saved command")
+        self.popup("Command doesn't match any saved command")
         return
 
     def command_menu_activated(self, item):
@@ -756,7 +757,7 @@ class MainWindow:
 
         return
 
-    def error_popup(self, err):
+    def popup(self, err):
         dialog = Gtk.MessageDialog(self.window,
                                    (Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT),
                                    Gtk.MessageType.ERROR,
@@ -787,38 +788,7 @@ class MainWindow:
 
         drop_info = treeview.get_dest_row_at_pos(x, y)
 
-        if drop_info:
-            source_folder = data[7]
-            pat, position = drop_info
-            dest_iter = self.bookmarks.get_iter(pat)
-            dest_folder = self.bookmarks.get_value(dest_iter, 7)
-            dest_parent = self.bookmarks.iter_parent(dest_iter)
-            if not source_folder:
-                if position == Gtk.TreeViewDropPosition.BEFORE:
-                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, data)
-                elif position == Gtk.TreeViewDropPosition.AFTER:
-                    new_iter = self.bookmarks.insert_after(dest_parent, dest_iter, data)
-                elif dest_folder:
-                    new_iter = self.bookmarks.append(dest_iter, data)
-                else:
-                    new_iter = self.bookmarks.insert_before(dest_parent, dest_iter, data)
-            else:
-                if dest_parent is not None:
-                    new_iter = self.bookmarks.insert_before(None, dest_parent, data)
-                elif position == Gtk.TreeViewDropPosition.BEFORE:
-                    new_iter = self.bookmarks.insert_before(None, dest_iter, data)
-                elif position == Gtk.TreeViewDropPosition.AFTER:
-                    new_iter = self.bookmarks.insert_after(None, dest_iter, data)
-                else:
-                    new_iter = self.bookmarks.insert_before(None, dest_iter, data)
-        else:
-            new_iter = self.bookmarks.append(None, data)
-
-        for it in row[cursor].iterchildren():
-            dat = []
-            for value in it:
-                dat.append(value)
-            self.bookmarks.append(new_iter, dat)
+        drag(data, drop_info, self.bookmarks, row, cursor)
 
         context.finish(True, True, etime)
 

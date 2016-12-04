@@ -28,7 +28,7 @@ class Station:
         if file:
             mime = mimetypes.guess_type(location)
             if mime[0] in HLS_TYPES:
-                self.app.error_popup("HLS streams can't be added from a file\n\nPlease copy/paste the link")
+                self.app.popup("HLS streams can't be added from a file\n\nPlease copy/paste the link")
                 return
 
             file = open(location, "r")
@@ -68,7 +68,7 @@ class Station:
 
             else:
                 response.close()
-                self.app.error_popup("Unknown content type: {}".format(content_type))
+                self.app.popup("Unknown content type: {}".format(content_type))
 
     def add_url(self, url, parent=None):
         infos = Station.fetch_infos(self, url)
@@ -119,7 +119,7 @@ class Station:
     def fetch_infos(self, url):
         server_url = dig(self, url, True)
         if re.match("error: .*", server_url):
-            self.app.error_popup(server_url)
+            self.app.popup(server_url)
             return
 
         if FFMPEG:
