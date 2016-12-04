@@ -21,6 +21,8 @@ class Station:
     def __init__(self, app, location, db, parent, file=False):
         self.db = db
         self.app = app
+        self.row = None
+
         self.add_station(location, parent, file)
 
     def add_station(self, location, parent=None, file=False):
@@ -75,7 +77,7 @@ class Station:
         infos.append(False)
         infos.append(400)
         infos[1] = url
-        self.db.append(parent, infos)
+        self.db.add_row(parent, infos)
         return
 
     def add_hls(self, url, parent=None):
@@ -85,7 +87,7 @@ class Station:
         cod = re.findall(r"CODECS=\"(.*)\"", infos)
         codec = cod[0]
         row = (url, url, "", "", codec, bitrate, "", False, 400)
-        self.db.append(parent, row)
+        self.db.add_row(parent, row)
         return
 
     def add_playlist(self, location, data, mime, parent=None, file=False):
@@ -95,8 +97,7 @@ class Station:
             response = playlist_selecter(self.app.window, match, file)
             if type(response) is tuple:
                 if response[0] is not None:
-                    par_row = [response[0], "", "", "", "", "", "", True, 700]
-                    par = self.db.append(None, par_row)
+                    par = self.db.add_folder(response[0])
                 else:
                     par = None
                 for row in response[1]:
@@ -128,4 +129,5 @@ class Station:
             data = fetch_gst(server_url)
 
         data[1] = url
+        self.row = data
         return data

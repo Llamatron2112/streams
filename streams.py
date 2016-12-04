@@ -5,8 +5,6 @@ from gi.repository import GObject, Gtk, Gst, Gdk, GLib
 
 from sys import argv, exit
 
-from xml.etree import ElementTree as Et
-
 from os import path, makedirs, remove
 
 from subprocess import Popen, PIPE, DEVNULL
@@ -23,12 +21,12 @@ import socket
 
 import re
 
-from export import Export
 from station import Station
 from constants import RE_URL
 from dig import dig
 from metadata import fetch_gst
 from drag import drag
+from db import DataBase
 
 GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 
@@ -69,9 +67,11 @@ class MainWindow:
         }
         self.builder.connect_signals(events)
 
-        self.bookmarks = self.builder.get_object("bookmarks")
+        self.db = DataBase(str, str, str, str, str, str, str, bool, int)
+        self.db.load()
 
         self.treeview = self.builder.get_object("view_bookmarks")
+        self.treeview.set_model(self.db)
         self.treeview.enable_model_drag_source(Gdk.ModifierType.BUTTON1_MASK,
                                                [("text/plain", Gtk.TargetFlags.SAME_WIDGET, 0)],
                                                Gdk.DragAction.MOVE)
@@ -86,8 +86,6 @@ class MainWindow:
         self.command_menu_update()
 
         threading.Thread(target=self.ipc, daemon=True).start()
-
-        self.load_db()
 
         self.restore_state()
 
@@ -132,54 +130,16 @@ class MainWindow:
             else:
                 print("No URL or file to open")
 
-    def load_db(self):
-        db_path = path.expanduser("~/.config/streams/stations.xml")
-        if not path.isfile(db_path):
-            return
-
-        db = Et.parse(db_path)
-        root = db.getroot()
-
-        for server in root.iter("server"):
-            row = list()
-            row.append(server.text)
-            row.append(server.get("url"))
-            row.append(server.get("genres"))
-            row.append(server.get("web"))
-            row.append(server.get("codec"))
-            row.append(server.get("bitrate"))
-            row.append(server.get("sample"))
-
-            is_server = server.get("folder") == "True"
-            row.append(is_server)
-
-            if is_server:
-                weight = 700
-            else:
-                weight = 400
-
-            row.append(weight)
-
-            parent_path = server.get("parent")
-            if parent_path == "":
-                parent = None
-            else:
-                parent = self.bookmarks.get_iter(parent_path)
-
-            self.bookmarks.append(parent, row)
-
-        return
-
     def on_selection_change(self, selection):
         self.edit_mode(False)
         self.load_selection_data()
         return
 
     def on_activation(self, text, path, column):
-        if self.bookmarks[path][7]:
+        if self.db[path][7]:
             return
 
-        url = self.bookmarks[path][1]
+        url = self.db[path][1]
         cmd = text.get_text().format(url)
         cmd = cmd.split(" ", 1)
         try:
@@ -270,8 +230,8 @@ class MainWindow:
             self.add_from_file(file)
 
     def add_from_file(self, location):
-        Station(self, location, self.bookmarks, None, True)
-        self.save_db()
+        Station(self, location, self.db, None, True)
+        self.db.save()
         return
 
     def add_folder(self, widget=None):
@@ -297,15 +257,14 @@ class MainWindow:
         dialog.destroy()
 
         if fol_name != "":
-            row = [fol_name, "", "", "", "", "", "", True, 700]
-            self.bookmarks.append(None, row)
-            self.save_db()
+            self.db.add_folder(fol_name)
+            self.db.save()
 
         return
 
     def create_station(self, url, parent=None):
-        Station(self, url, self.bookmarks, parent)
-        self.save_db()
+        Station(self, url, self.db, parent)
+        self.db.save()
         return
 
     def on_edit(self, button):
@@ -327,9 +286,9 @@ class MainWindow:
             return
 
         row = self.selection.get_selected()[1]
-        self.bookmarks.remove(row)
+        self.db.remove(row)
 
-        self.save_db()
+        self.db.save()
         return
 
     def on_save(self, button):
@@ -349,15 +308,15 @@ class MainWindow:
         if name == "":
             name = url
 
-        self.bookmarks.set_value(row, 0, name)
-        self.bookmarks.set_value(row, 1, url)
-        self.bookmarks.set_value(row, 2, genres)
-        self.bookmarks.set_value(row, 3, web)
-        self.bookmarks.set_value(row, 4, codec)
-        self.bookmarks.set_value(row, 5, bitrate)
-        self.bookmarks.set_value(row, 6, sample)
+        self.db.set_value(row, 0, name)
+        self.db.set_value(row, 1, url)
+        self.db.set_value(row, 2, genres)
+        self.db.set_value(row, 3, web)
+        self.db.set_value(row, 4, codec)
+        self.db.set_value(row, 5, bitrate)
+        self.db.set_value(row, 6, sample)
 
-        self.save_db()
+        self.db.save()
 
         self.edit_mode(False)
 
@@ -383,8 +342,8 @@ class MainWindow:
                 text.set_text(new_url[1][0])
             else:
                 if new_url[0] is not None:
-                    par_row = [new_url[0], "", "", "", "", "", "", True, 700]
-                    parent = self.bookmarks.append(None, par_row)
+                    par_row = self.add_folder_row(new_url[0])
+                    parent = self.db.append(None, par_row)
                 else:
                     parent = None
 
@@ -539,39 +498,6 @@ class MainWindow:
         text_bitrate.set_text(bitrate)
         text_sample.set_text(sample)
 
-        return
-
-    def add_row_to_db(self, model, path, iter, user_data):
-        row = self.bookmarks.get(iter, 0, 1, 2, 3, 4, 5, 6, 7)
-        server = Et.SubElement(user_data, "server")
-        server.text = row[0]
-        server.set("url", row[1])
-        server.set("genres", row[2])
-        server.set("web", row[3])
-        server.set("codec", row[4])
-        server.set("bitrate", row[5])
-        server.set("sample", row[6])
-        server.set("folder", str(row[7]))
-
-        parent_iter = self.bookmarks.iter_parent(iter)
-        if parent_iter is not None:
-            parent = self.bookmarks.get_path(parent_iter)
-        else:
-            parent = ""
-        server.set("parent", parent)
-
-    def save_db(self, db=None, a=None, b=None):
-        stations = Et.Element("stations")
-
-        self.bookmarks.foreach(self.add_row_to_db, stations)
-
-        db = Et.ElementTree(stations)
-        db_path = path.expanduser("~/.config/streams/stations.xml")
-
-        if not path.exists(path.dirname(db_path)):
-            makedirs(path.dirname(db_path))
-
-        db.write(db_path)
         return
 
     def exit(self, a, b):
@@ -757,10 +683,10 @@ class MainWindow:
 
         return
 
-    def popup(self, err):
+    def popup(self, err, msg_type=Gtk.MessageType.ERROR):
         dialog = Gtk.MessageDialog(self.window,
                                    (Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT),
-                                   Gtk.MessageType.ERROR,
+                                   msg_type,
                                    Gtk.ButtonsType.CLOSE,
                                    err)
         dialog.set_default_response(Gtk.ResponseType.CLOSE)
@@ -788,11 +714,11 @@ class MainWindow:
 
         drop_info = treeview.get_dest_row_at_pos(x, y)
 
-        drag(data, drop_info, self.bookmarks, row, cursor)
+        drag(data, drop_info, self.db, row, cursor)
 
         context.finish(True, True, etime)
 
-        self.save_db()
+        self.db.save()
         return
 
     def on_export(self, menu_item):
@@ -820,32 +746,7 @@ class MainWindow:
         dial.destroy()
 
         if response == Gtk.ResponseType.OK:
-            self.do_export(file, ext)
-
-        return
-
-    def do_export(self, file, ext):
-        file_ext = file.split(".")[-1]
-        if file_ext.lower() != ext:
-            file = "{}.{}".format(file, ext)
-
-        if path.isfile(file):
-            dial = Gtk.MessageDialog(self.window,
-                                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                     Gtk.MessageType.QUESTION,
-                                     Gtk.ButtonsType.OK_CANCEL,
-                                     "{}\n\nFile already exists, overwrite ?".format(file)
-                                     )
-            response = dial.run()
-            dial.destroy()
-            if response != Gtk.ResponseType.OK:
-                return
-
-        exp = Export(file, self.bookmarks)
-
-        f = open(file, "w")
-        f.write(exp.data)
-        f.close()
+            self.db.export(file, ext, self.window)
 
         return
 
