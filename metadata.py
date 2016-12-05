@@ -10,8 +10,6 @@ from urllib import request
 
 import re
 
-from subprocess import getoutput
-
 
 def get_metadata(url):
     info = GstPbutils.Discoverer().discover_uri(url)
