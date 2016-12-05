@@ -9,12 +9,41 @@ from constants import AUDIO_TYPES, PL_TYPES, HLS_TYPES
 from plparser import PlaylistParser
 from plselect import playlist_selecter
 
+FOLLOW_LINK_LIMIT = 5
 
-def dig(window, url, recursive):
+
+def get_next_url(window, url):
+    r = urllib.request.urlopen(url)
+    mime = r.info().get_content_type()
+
+    if (mime in AUDIO_TYPES) or (mime in HLS_TYPES):
+        r.close()
+        return url
+    elif mime in PL_TYPES:
+        data = str(r.read(), "utf-8")
+        r.close()
+        match = PlaylistParser().parse(data, mime)
+        if len(match) > 1:
+            result = playlist_selecter(window, match)
+            if result == "cancel":
+                return
+            elif result == "keep":
+                return url
+            elif type(result) is tuple:
+                res = []
+                for row in result[1]:
+                    res.append(row)
+                return result[0], res
+
+        elif len(match) == 1:
+            return match[0][1]
+
+
+def get_audio_url(window, url):
     new_url = "fresh"
     i = 0
     content_type = None
-    while content_type not in AUDIO_TYPES and i < 5:
+    while content_type not in AUDIO_TYPES and i < FOLLOW_LINK_LIMIT:
 
         if new_url != "fresh":
             url = new_url
@@ -36,22 +65,9 @@ def dig(window, url, recursive):
             data = str(response.read(), "utf-8")
             response.close()
             match = PlaylistParser().parse(data, content_type)
-            if len(match) > 1 and not recursive:
-                result = playlist_selecter(window, match)
-                if result == "cancel":
-                    return
-                elif result == "keep":
-                    return url
-                elif type(result) is list:
-                    res = []
-                    for row in result[1]:
-                        res.append(row)
-                    return result[0], res
-
-            else:
-                new_url = match[0][1]
-                if new_url is None:
-                    return "error: Couldn't find an URL"
+            new_url = match[0][1]
+            if new_url is None:
+                return "error: Couldn't find an URL"
 
         if content_type in AUDIO_TYPES:
             break
@@ -62,9 +78,6 @@ def dig(window, url, recursive):
         if new_url == "fresh":
             # No new url
             return "error: No new URL"
-
-        if not recursive and new_url != url:
-            return new_url
 
         i += 1
 

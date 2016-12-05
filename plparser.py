@@ -11,21 +11,18 @@ RE_PLS_TITLE = re.compile(r"Title(\d+)=(.*)\n")
 
 
 def parse_pls(data):
-    titles = RE_PLS_TITLE.findall(data)
-    urls = RE_PLS_URL.findall(data)
-
     ents = re.search(r"numberofentries=(\d+)", data, re.IGNORECASE)
     entries = int(ents.group(1))
 
     tits = {}
-    for t in titles:
+    for t in RE_PLS_TITLE.findall(data):
         i = int(t[0])
         title = t[1]
         row = {i: title}
         tits.update(row)
 
     locs = {}
-    for u in urls:
+    for u in RE_PLS_URL.findall(data):
         i = int(u[0])
         url = u[1]
         row = {i: url}
@@ -33,7 +30,7 @@ def parse_pls(data):
 
     result = []
     for i in range(1, entries + 1):
-        if tits[i] is not None:
+        if len(tits) == len(locs) is not None:
             row = (tits[i], locs[i])
         else:
             row = (locs[i], locs[i])
@@ -45,14 +42,11 @@ def parse_pls(data):
 def parse_m3u(data):
     result = []
     if re.match(r"^#EXTM3U.*", data):
-        pairs = RE_M3U_INFOS.findall(data)
-
-        for title, url in pairs:
+        for title, url in RE_M3U_INFOS.findall(data):
             row = (title, url)
             result.append(row)
     else:
-        match = RE_URL.findall(data)
-        for url in match:
+        for url in RE_URL.findall(data):
             row = (url, url)
             result.append(row)
 
@@ -80,9 +74,8 @@ def parse_xspf(data):
 
 
 def parse_unknown(data):
-    match = RE_URL.findall(data)
     result = []
-    for url in match:
+    for url in RE_URL.findall(data):
         row = (url, url)
         result.append(row)
 

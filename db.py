@@ -87,23 +87,7 @@ class DataBase(Gtk.TreeStore):
             self.append(parent, row)
         return
 
-    def export(self, file, ext, window):
-        file_ext = file.split(".")[-1]
-        if file_ext.lower() != ext:
-            file = "{}.{}".format(file, ext)
-
-        if path.isfile(file):
-            dial = Gtk.MessageDialog(window,
-                                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                     Gtk.MessageType.QUESTION,
-                                     Gtk.ButtonsType.OK_CANCEL,
-                                     "{}\n\nFile already exists, overwrite ?".format(file)
-                                     )
-            response = dial.run()
-            dial.destroy()
-            if response != Gtk.ResponseType.OK:
-                return
-
+    def export(self, file):
         exp = Export(file, self)
 
         f = open(file, "w")

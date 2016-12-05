@@ -13,7 +13,7 @@ import re
 from subprocess import getoutput
 
 
-def fetch_gst(url):
+def get_metadata(url):
     info = GstPbutils.Discoverer().discover_uri(url)
 
     name = ""
@@ -74,43 +74,3 @@ def fetch_gst(url):
 
     return dat
 
-
-def fetch_ffmpeg(url):
-    text = getoutput("ffprobe {}".format(url))
-    lines = str.splitlines(text)
-
-    values = {}
-    values.update({"br": ""})
-    values.update({"name": ""})
-    values.update({"genre": ""})
-    values.update({"url": ""})
-
-    for line in lines:
-        match = re.search(r"icy-([a-zA-Z0-9]+)\s+:\s+(.*)", line)
-        if match is not None:
-            print(match.group(1), ":", match.group(2))
-            values.update({match.group(1): match.group(2)})
-
-    m_audio = re.search(r"Stream #0:0.*Audio: (.*), ([0-9]+) Hz", text)
-    values.update({"codec": m_audio.group(1)})
-    values.update({"sample": m_audio.group(2)})
-
-    if values["br"] == "":
-        m_br = re.search(r"Duration.* bitrate: (.*)(?: kb/s)?", text)
-        if m_br is None:
-            values.update({"br": "N/A"})
-        else:
-            values.update({"br": m_br.group(1)})
-
-    if values["name"] == "":
-        values.update({"name": url})
-
-    dat = [values["name"],
-           url,
-           values["genre"],
-           values["url"],
-           values["codec"],
-           values["br"],
-           values["sample"]]
-
-    return dat

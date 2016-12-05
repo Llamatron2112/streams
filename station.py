@@ -10,11 +10,9 @@ import mimetypes
 
 from plparser import PlaylistParser
 from constants import AUDIO_TYPES, PL_TYPES, HLS_TYPES
-from dig import dig
-from metadata import fetch_gst, fetch_ffmpeg
+from dig import get_audio_url
+from metadata import get_metadata
 from plselect import playlist_selecter
-
-FFMPEG = False
 
 
 class Station:
@@ -73,7 +71,7 @@ class Station:
                 self.app.popup("Unknown content type: {}".format(content_type))
 
     def add_url(self, url, parent=None):
-        infos = Station.fetch_infos(self, url)
+        infos = get_metadata(get_audio_url(self.app.window, url))
         infos.append(False)
         infos.append(400)
         infos[1] = url
@@ -118,15 +116,12 @@ class Station:
         return
 
     def fetch_infos(self, url):
-        server_url = dig(self, url, True)
+        server_url = get_audio_url(self.app.window, url)
         if re.match("error: .*", server_url):
             self.app.popup(server_url)
             return
 
-        if FFMPEG:
-            data = fetch_ffmpeg(server_url)
-        else:
-            data = fetch_gst(server_url)
+        data = get_metadata(server_url)
 
         data[1] = url
         self.row = data

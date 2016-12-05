@@ -23,8 +23,8 @@ import re
 
 from station import Station
 from constants import RE_URL
-from dig import dig
-from metadata import fetch_gst
+from dig import get_audio_url, get_next_url
+from metadata import get_metadata
 from drag import drag
 from db import DataBase
 
@@ -329,21 +329,20 @@ class MainWindow:
 
     def on_dig(self, text):
         url = text.get_text()
-        new_url = dig(self.window, url, False)
-
-        if re.match(r"^error: .*", new_url):
-            self.popup(new_url)
+        new_url = get_next_url(self.window, url)
 
         if type(new_url) is str:
-            text.set_text(new_url)
+            if re.match(r"^error: .*", new_url):
+                self.popup(new_url)
+            else:
+                text.set_text(new_url)
 
         elif type(new_url) is tuple:
             if len(new_url[1]) == 1:
                 text.set_text(new_url[1][0])
             else:
                 if new_url[0] is not None:
-                    par_row = self.add_folder_row(new_url[0])
-                    parent = self.db.append(None, par_row)
+                    parent = self.db.add_folder(new_url[0])
                 else:
                     parent = None
 
@@ -359,7 +358,7 @@ class MainWindow:
 
     def on_autofill(self, text):
         url = text.get_text()
-        data = fetch_gst(url)
+        data = get_metadata(get_audio_url(self.window, url))
 
         self.builder.get_object("text_name").set_text(data[0])
         self.builder.get_object("text_url").set_text(url)
@@ -746,7 +745,23 @@ class MainWindow:
         dial.destroy()
 
         if response == Gtk.ResponseType.OK:
-            self.db.export(file, ext, self.window)
+            file_ext = file.split(".")[-1]
+            if file_ext.lower() != ext:
+                file = "{}.{}".format(file, ext)
+
+            if path.isfile(file):
+                dial = Gtk.MessageDialog(self.window,
+                                         Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                         Gtk.MessageType.QUESTION,
+                                         Gtk.ButtonsType.OK_CANCEL,
+                                         "{}\n\nFile already exists, overwrite ?".format(file)
+                                         )
+                response = dial.run()
+                dial.destroy()
+                if response != Gtk.ResponseType.OK:
+                    return
+
+            self.db.export(file)
 
         return
 
