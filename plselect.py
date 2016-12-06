@@ -3,9 +3,9 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-def playlist_selecter(main_window, match, file=False):
+def playlist_selecter(app, match, file=False):
     dialog = Gtk.Dialog("Multiple entries",
-                        main_window,
+                        app.window,
                         Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT)
     dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
     dialog.add_button("Add selected", Gtk.ResponseType.OK)
@@ -33,6 +33,7 @@ def playlist_selecter(main_window, match, file=False):
 
     dialog.set_default_response(Gtk.ResponseType.OK)
     dialog.set_default_size(400, 300)
+    dialog.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
 
     dialog.vbox.pack_start(scroll_area, True, True, 5)
 
@@ -44,8 +45,9 @@ def playlist_selecter(main_window, match, file=False):
         model, pathlist = select.get_selected_rows()
         for row in pathlist:
             result.append(stations[row][1])
-
         dialog.destroy()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
         return None, result
 
     elif response == 2:
@@ -61,6 +63,7 @@ def playlist_selecter(main_window, match, file=False):
         area = fold_dialog.get_content_area()
         area.add(text_fold)
         fold_dialog.set_default_response(Gtk.ResponseType.OK)
+        fold_dialog.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
 
         fol_name = ""
         fold_response = fold_dialog.run()
@@ -69,19 +72,26 @@ def playlist_selecter(main_window, match, file=False):
             fol_name = text_fold.get_text()
 
         fold_dialog.destroy()
-
+        while Gtk.events_pending():
+            Gtk.main_iteration()
         if fol_name != "":
             model, pathlist = select.get_selected_rows()
             for row in pathlist:
                 result.append(stations[row][1])
 
             dialog.destroy()
+            while Gtk.events_pending():
+                Gtk.main_iteration()
             return fol_name, result
 
     elif response == 1:
         dialog.destroy()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
         return "keep"
 
     elif response == Gtk.ResponseType.CANCEL or response == Gtk.ResponseType.DELETE_EVENT:
         dialog.destroy()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
         return "cancel"

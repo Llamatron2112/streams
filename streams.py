@@ -33,7 +33,6 @@ GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 class MainWindow:
     def __init__(self):
         self.edit = False
-
         self.builder = Gtk.Builder()
         self.builder.add_from_file(GLADE_LOC)
 
@@ -89,6 +88,7 @@ class MainWindow:
         self.restore_state()
 
         self.window.show_all()
+        self.locked = False
 
         if len(argv) > 1:
             if RE_URL.match(argv[1]):
@@ -228,13 +228,26 @@ class MainWindow:
             self.add_from_file(file)
 
     def add_from_file(self, location):
+        if self.locked:
+            print("Locked")
+            return
+        self.locked = True
+
+        win_wait = self.pls_wait()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
         try:
             Station(self, location, None, True)
         except Exception as err:
             traceback.print_exc()
+            win_wait.destroy()
             self.popup(err)
+            self.locked = False
         else:
+            win_wait.destroy()
             self.db.save()
+            self.locked = False
         return
 
     def add_folder(self, widget=None):
@@ -266,13 +279,26 @@ class MainWindow:
         return
 
     def create_station(self, url, parent=None):
+        if self.locked:
+            print("Locked")
+            return
+        self.locked = True
+        win_wait = self.pls_wait()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
         try:
             Station(self, url, parent)
         except Exception as err:
             traceback.print_exc()
+            win_wait.destroy()
             self.popup(err)
+            self.locked = False
         else:
             self.db.save()
+            win_wait.destroy()
+            self.locked = False
+
         return
 
     def on_edit(self, button):
@@ -338,7 +364,7 @@ class MainWindow:
     def on_dig(self, text):
         url = text.get_text()
         try:
-            new_url = get_next_url(self.window, url)
+            new_url = get_next_url(self, url)
         except Exception as err:
             traceback.print_exc()
             self.popup(err)
@@ -706,6 +732,21 @@ class MainWindow:
         dialog.run()
         dialog.destroy()
         return
+
+    def pls_wait(self):
+        win = Gtk.Window()
+        win.set_default_size(100, 50)
+        win.set_transient_for(self.window)
+        win.set_modal(True)
+        win.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
+        win.set_decorated(False)
+
+        text = Gtk.Label("Please wait...")
+        win.add(text)
+        text.show()
+
+        win.show_now()
+        return win
 
     def drag_data_received(self, treeview, context, x, y, selection, info, etime):
         selec = treeview.get_selection()
