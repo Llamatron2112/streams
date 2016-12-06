@@ -1,6 +1,7 @@
 import gi
+gi.require_version("Gtk", "3.0")
 gi.require_version("GstPbutils", "1.0")
-from gi.repository import GstPbutils
+from gi.repository import Gtk, GstPbutils
 
 import http
 from http.client import error
@@ -18,7 +19,7 @@ from constants import AUDIO_TYPES, PL_TYPES
 FOLLOW_LINK_LIMIT = 5
 
 
-def get_next_url(main_window, url):
+def get_next_url(app, url):
     r = urllib.request.urlopen(url)
     mime = r.info().get_content_type()
 
@@ -30,7 +31,7 @@ def get_next_url(main_window, url):
         r.close()
         match = PlaylistParser().parse(data, mime)
         if len(match) > 1:
-            result = playlist_selecter(main_window, match)
+            result = playlist_selecter(app, match)
             if result == "cancel":
                 return
             elif result == "keep":
@@ -147,3 +148,4 @@ def get_metadata(url):
     dat = [name, url, genres, web, codec, bitrate, sample]
 
     return dat
+

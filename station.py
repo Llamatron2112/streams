@@ -16,11 +16,9 @@ class Station:
     def __init__(self, app, location, parent, file=False):
         self.app = app
         self.row = None
-
         self._add_station(location, parent, file)
 
     def _add_station(self, location, parent=None, file=False):
-
         if file:
             mime = mimetypes.guess_type(location)
             if mime[0] in AUDIO_TYPES:
@@ -74,7 +72,7 @@ class Station:
         match = PlaylistParser().parse(data, mime)
 
         if len(match) > 1:
-            response = playlist_selecter(self.app.window, match, file)
+            response = playlist_selecter(self.app, match, file)
             if type(response) is tuple:
                 if response[0] is not None:
                     par = self.app.db.add_folder(response[0])
