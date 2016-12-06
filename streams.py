@@ -7,6 +7,8 @@ from sys import argv, exit
 
 from os import path, makedirs, remove
 
+import traceback
+
 from subprocess import Popen, PIPE, DEVNULL
 
 from collections import OrderedDict
@@ -19,12 +21,9 @@ import threading
 
 import socket
 
-import re
-
 from station import Station
 from constants import RE_URL
-from dig import get_audio_url, get_next_url
-from metadata import get_metadata
+from tools import get_metadata, get_next_url
 from drag import drag
 from db import DataBase
 
@@ -105,10 +104,9 @@ class MainWindow:
             port = random.randint(10000, 60000)
             try:
                 ipc_socket.bind(("localhost", port))
-            except socket.error as err:
+            except socket.error:
                 pass
             else:
-
                 bound = True
 
         file_path = path.expanduser("~/.cache/streams_port")
@@ -147,7 +145,8 @@ class MainWindow:
                   shell=False,
                   stdout=PIPE,
                   stderr=DEVNULL)
-        except FileNotFoundError as err:
+        except Exception as err:
+            traceback.print_exc()
             self.popup(err)
 
         return
@@ -208,21 +207,20 @@ class MainWindow:
                                       Gtk.STOCK_OPEN, Gtk.ResponseType.OK
                                       ))
 
-        filter = Gtk.FileFilter()
-        filter.set_name("Playlists")
-        filter.add_pattern("*.pls")
-        filter.add_pattern("*.m3u")
-        filter.add_pattern("*.xspf")
-        dial.add_filter(filter)
+        filt = Gtk.FileFilter()
+        filt.set_name("Playlists")
+        filt.add_pattern("*.pls")
+        filt.add_pattern("*.m3u")
+        filt.add_pattern("*.xspf")
+        dial.add_filter(filt)
 
-        filter = Gtk.FileFilter()
-        filter.set_name("All")
-        filter.add_pattern("*")
-        dial.add_filter(filter)
+        filt = Gtk.FileFilter()
+        filt.set_name("All")
+        filt.add_pattern("*")
+        dial.add_filter(filt)
 
         response = dial.run()
         file = dial.get_filename()
-        ext = dial.get_filter().get_name()
 
         dial.destroy()
 
@@ -230,8 +228,13 @@ class MainWindow:
             self.add_from_file(file)
 
     def add_from_file(self, location):
-        Station(self, location, self.db, None, True)
-        self.db.save()
+        try:
+            Station(self, location, None, True)
+        except Exception as err:
+            traceback.print_exc()
+            self.popup(err)
+        else:
+            self.db.save()
         return
 
     def add_folder(self, widget=None):
@@ -263,8 +266,13 @@ class MainWindow:
         return
 
     def create_station(self, url, parent=None):
-        Station(self, url, self.db, parent)
-        self.db.save()
+        try:
+            Station(self, url, parent)
+        except Exception as err:
+            traceback.print_exc()
+            self.popup(err)
+        else:
+            self.db.save()
         return
 
     def on_edit(self, button):
@@ -329,13 +337,15 @@ class MainWindow:
 
     def on_dig(self, text):
         url = text.get_text()
-        new_url = get_next_url(self.window, url)
+        try:
+            new_url = get_next_url(self.window, url)
+        except Exception as err:
+            traceback.print_exc()
+            self.popup(err)
+            return
 
         if type(new_url) is str:
-            if re.match(r"^error: .*", new_url):
-                self.popup(new_url)
-            else:
-                text.set_text(new_url)
+            text.set_text(new_url)
 
         elif type(new_url) is tuple:
             if len(new_url[1]) == 1:
@@ -358,15 +368,19 @@ class MainWindow:
 
     def on_autofill(self, text):
         url = text.get_text()
-        data = get_metadata(get_audio_url(self.window, url))
-
-        self.builder.get_object("text_name").set_text(data[0])
-        self.builder.get_object("text_url").set_text(url)
-        self.builder.get_object("text_genres").set_text(data[2])
-        self.builder.get_object("text_web").set_text(data[3])
-        self.builder.get_object("text_codec").set_text(data[4])
-        self.builder.get_object("text_bitrate").set_text(data[5])
-        self.builder.get_object("text_sample").set_text(data[6])
+        try:
+            data = get_metadata(url)
+        except Exception as err:
+            traceback.print_exc()
+            self.popup(err)
+        else:
+            self.builder.get_object("text_name").set_text(data[0])
+            self.builder.get_object("text_url").set_text(url)
+            self.builder.get_object("text_genres").set_text(data[2])
+            self.builder.get_object("text_web").set_text(data[3])
+            self.builder.get_object("text_codec").set_text(data[4])
+            self.builder.get_object("text_bitrate").set_text(data[5])
+            self.builder.get_object("text_sample").set_text(data[6])
 
         return
 
@@ -692,17 +706,6 @@ class MainWindow:
         dialog.run()
         dialog.destroy()
         return
-
-    def httperror_popup(self, err):
-        dialog = Gtk.MessageDialog(self.window,
-                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                   Gtk.MessageType.ERROR,
-                                   Gtk.ButtonsType.CLOSE,
-                                   err.code)
-        dialog.format_secondary_text(err.reason)
-        dialog.set_default_response(Gtk.ResponseType.CLOSE)
-        dialog.run()
-        dialog.destroy()
 
     def drag_data_received(self, treeview, context, x, y, selection, info, etime):
         selec = treeview.get_selection()

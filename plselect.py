@@ -3,9 +3,9 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-def playlist_selecter(window, match, file=False):
+def playlist_selecter(main_window, match, file=False):
     dialog = Gtk.Dialog("Multiple entries",
-                        window,
+                        main_window,
                         Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT)
     dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
     dialog.add_button("Add selected", Gtk.ResponseType.OK)

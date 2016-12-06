@@ -13,13 +13,14 @@ PL_TYPES = ["audio/x-scpls",
             "audio/x-mpegurl",
             "application/xspf+xml",
             "application/pls+xml",
-            "application/octet-stream"]
+            "application/octet-stream"
+            ]
 
 AUDIO_TYPES = ["audio/mpeg",
                "application/ogg",
                "audio/ogg",
                "audio/aac",
-               "audio/aacp"]
-
-HLS_TYPES = ["application/vnd.apple.mpegurl",
-             "application/x-mpegurl"]
+               "audio/aacp",
+               "application/vnd.apple.mpegurl",
+               "application/x-mpegurl"
+               ]

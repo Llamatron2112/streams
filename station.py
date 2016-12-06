@@ -4,37 +4,33 @@ from http.client import error
 import urllib
 from urllib import request, error
 
-import re
-
 import mimetypes
 
 from plparser import PlaylistParser
-from constants import AUDIO_TYPES, PL_TYPES, HLS_TYPES
-from dig import get_audio_url
-from metadata import get_metadata
+from constants import AUDIO_TYPES, PL_TYPES
+from tools import get_metadata, get_audio_url
 from plselect import playlist_selecter
 
 
 class Station:
-    def __init__(self, app, location, db, parent, file=False):
-        self.db = db
+    def __init__(self, app, location, parent, file=False):
         self.app = app
         self.row = None
 
-        self.add_station(location, parent, file)
+        self._add_station(location, parent, file)
 
-    def add_station(self, location, parent=None, file=False):
+    def _add_station(self, location, parent=None, file=False):
 
         if file:
             mime = mimetypes.guess_type(location)
-            if mime[0] in HLS_TYPES:
-                self.app.popup("HLS streams can't be added from a file\n\nPlease copy/paste the link")
+            if mime[0] in AUDIO_TYPES:
+                self.app.popup("Can't be added from a local file\n\nPlease copy/paste the link")
                 return
 
             file = open(location, "r")
             data = file.read()
             file.close()
-            self.add_playlist(location, data, mime[0], None, True)
+            self._add_playlist(location, data, mime[0], None, True)
 
         else:
             content_type = None
@@ -50,79 +46,57 @@ class Station:
 
             except http.client.BadStatusLine as err:
                 if err.line == 'ICY 200 OK\r\n':
-                    self.add_url(location, parent)
+                    self._add_url(location, parent)
                     return
 
             if content_type in PL_TYPES:
                 data = str(response.read(), "utf-8")
                 response.close()
-                self.add_playlist(location, data, content_type, parent, False)
+                self._add_playlist(location, data, content_type, parent, False)
 
             elif content_type in AUDIO_TYPES:
                 response.close()
-                self.add_url(location, parent)
-
-            elif content_type in HLS_TYPES:
-                response.close()
-                self.add_hls(location, parent)
+                self._add_url(location, parent)
 
             else:
                 response.close()
                 self.app.popup("Unknown content type: {}".format(content_type))
 
-    def add_url(self, url, parent=None):
-        infos = get_metadata(get_audio_url(self.app.window, url))
+    def _add_url(self, url, parent=None):
+        infos = get_metadata(get_audio_url(url))
         infos.append(False)
         infos.append(400)
         infos[1] = url
-        self.db.add_row(parent, infos)
+        self.app.db.add_row(parent, infos)
         return
 
-    def add_hls(self, url, parent=None):
-        infos = str(urllib.request.urlopen(url).read(), "utf-8")
-        br = re.findall(r"BANDWIDTH=(\d*)", infos)
-        bitrate = int(br[0]) / 1000
-        cod = re.findall(r"CODECS=\"(.*)\"", infos)
-        codec = cod[0]
-        row = (url, url, "", "", codec, bitrate, "", False, 400)
-        self.db.add_row(parent, row)
-        return
-
-    def add_playlist(self, location, data, mime, parent=None, file=False):
+    def _add_playlist(self, location, data, mime, parent=None, file=False):
         match = PlaylistParser().parse(data, mime)
 
         if len(match) > 1:
             response = playlist_selecter(self.app.window, match, file)
             if type(response) is tuple:
                 if response[0] is not None:
-                    par = self.db.add_folder(response[0])
+                    par = self.app.db.add_folder(response[0])
                 else:
                     par = None
                 for row in response[1]:
-                    self.add_station(row, par)
+                    self._add_station(row, par)
 
             elif response == "cancel":
                 return
 
             elif response == "keep":
-                self.add_url(location, parent)
+                self._add_url(location, parent)
 
         elif len(match) == 1 and not file:
-            self.add_url(location, parent)
+            self._add_url(location, parent)
 
         elif len(match) == 1 and file:
-            self.add_url(match[0][1], parent)
+            self._add_url(match[0][1], parent)
+
+        elif match is None or len(match) == 0:
+            raise RuntimeError("Empty playlist")
 
         return
 
-    def fetch_infos(self, url):
-        server_url = get_audio_url(self.app.window, url)
-        if re.match("error: .*", server_url):
-            self.app.popup(server_url)
-            return
-
-        data = get_metadata(server_url)
-
-        data[1] = url
-        self.row = data
-        return data
