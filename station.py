@@ -39,7 +39,7 @@ class Station:
                 content_type = info.get_content_type()
 
             except urllib.error.HTTPError as err:
-                self.app.httperror_popup(err)
+                self.app.popup(err)
                 return
 
             except http.client.BadStatusLine as err:
