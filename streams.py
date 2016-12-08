@@ -71,9 +71,9 @@ class MainWindow:
         self.treeview = self.builder.get_object("view_bookmarks")
         self.treeview.set_model(self.db)
         self.treeview.enable_model_drag_source(Gdk.ModifierType.BUTTON1_MASK,
-                                               [("text/plain", Gtk.TargetFlags.SAME_WIDGET, 0)],
+                                               [("list_row", Gtk.TargetFlags.SAME_WIDGET, 0)],
                                                Gdk.DragAction.MOVE)
-        self.treeview.enable_model_drag_dest([("text/plain", Gtk.TargetFlags.SAME_WIDGET, 0)],
+        self.treeview.enable_model_drag_dest([("list_row", Gtk.TargetFlags.SAME_WIDGET, 0)],
                                              Gdk.DragAction.MOVE)
 
         self.selection = self.builder.get_object("bookmarks_view_selection")
