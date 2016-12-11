@@ -31,13 +31,13 @@ class Streams(Gtk.Application):
         self.connect("open", self.open_files)
 
     def show_window(self, *args):
-        if len(self.get_windows()) == 0:
+        if not hasattr(self, "window"):
             self.window = MainWindow(self)
         else:
             self.window.window.present()
 
     def open_files(self, app, files, hint, *args):
-        if len(self.get_windows()) == 0:
+        if not hasattr(self, "window"):
             self.show_window()
         self.window.open(files)
 
@@ -526,11 +526,6 @@ class MainWindow:
 
     def exit(self, a, b):
         self.write_state()
-
-        ipc_file = path.expanduser("~/.cache/streams_port")
-        remove(ipc_file)
-
-        # Gtk.main_quit()
         return
 
     def write_state(self):
@@ -796,32 +791,8 @@ class MainWindow:
 
 
 if __name__ == '__main__':
-    # ipc_path = path.expanduser("~/.cache/streams_port")
-    # if path.isfile(ipc_path):
-    #     f = open(ipc_path, "r")
-    #     ipc_port = int(f.read())
-    #     f.close()
-    #
-    #     if len(argv) > 1:
-    #         d = argv[1]
-    #     else:
-    #         d = ""
-    #
-    #     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #     try:
-    #         s.connect(("localhost", ipc_port))
-    #     except socket.error as e:
-    #         s.close()
-    #         pass
-    #     else:
-    #         s.send(d.encode())
-    #         s.close()
-    #         exit(0)
-
     GObject.threads_init()
     Gst.init(None)
     app = Streams()
     exit_status = app.run(sys.argv)
     sys.exit(exit_status)
-    # MainWindow()
-    # Gtk.main()
