@@ -1,9 +1,9 @@
 import gi
 gi.require_version('Gst', '1.0')
 gi.require_version("Gtk", "3.0")
-from gi.repository import GObject, Gtk, Gst, Gdk, GLib
+from gi.repository import GObject, Gio, Gtk, Gst, Gdk, GLib
 
-from sys import argv, exit
+import sys
 
 from os import path, makedirs, remove
 
@@ -13,13 +13,7 @@ from subprocess import Popen, PIPE, DEVNULL
 
 from collections import OrderedDict
 
-import random
-
 import json
-
-import threading
-
-import socket
 
 from station import Station
 from constants import RE_URL
@@ -27,15 +21,35 @@ from tools import get_metadata, get_next_url
 from drag import drag
 from db import DataBase
 
-GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
+
+class Streams(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="com.llamatron.streams",
+                         flags=Gio.ApplicationFlags.HANDLES_OPEN)
+        self.register()
+        self.connect("activate", self.show_window)
+        self.connect("open", self.open_files)
+
+    def show_window(self, *args):
+        if len(self.get_windows()) == 0:
+            self.window = MainWindow(self)
+        else:
+            self.window.window.present()
+
+    def open_files(self, app, files, hint, *args):
+        if len(self.get_windows()) == 0:
+            self.show_window()
+        self.window.open(files)
 
 
 class MainWindow:
-    def __init__(self):
+    def __init__(self, application):
+        self.application = application
         self.edit = False
         self.locked = True
         self.builder = Gtk.Builder()
-        self.builder.add_from_file(GLADE_LOC)
+        glade_path = "{}/streams.glade".format(path.dirname(__file__))
+        self.builder.add_from_file(glade_path)
 
         self.window = self.builder.get_object("main_win")
         self.window.set_wmclass("Streams", "Streams")
@@ -84,50 +98,20 @@ class MainWindow:
         self.commands_list_load()
         self.command_menu_update()
 
-        threading.Thread(target=self.ipc, daemon=True).start()
-
         self.restore_state()
 
+        self.window.set_application(application)
         self.window.show_all()
         self.locked = False
 
-        if len(argv) > 1:
-            if RE_URL.match(argv[1]):
-                self.create_station(argv[1])
+    def open(self, files):
+        for f in files:
+            uri = f.get_uri()
+            print(uri)
+            if RE_URL.match(uri) and str.lower(uri[0:3]) == "http":
+                self.create_station(uri)
             else:
-                self.add_from_file(argv[1])
-
-    def ipc(self):
-        ipc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        port = 10101
-        bound = False
-        while not bound:
-            port = random.randint(10000, 60000)
-            try:
-                ipc_socket.bind(("localhost", port))
-            except socket.error:
-                pass
-            else:
-                bound = True
-
-        file_path = path.expanduser("~/.cache/streams_port")
-        if not path.exists(path.dirname(file_path)):
-            makedirs(path.dirname(file_path))
-        ipc_file = open(file_path, "w")
-        ipc_file.write(str(port))
-        ipc_file.close()
-
-        ipc_socket.listen(5)
-        while True:
-            conn, addr = ipc_socket.accept()
-            dat = conn.recv(1024).decode()
-            self.window.present()
-            if RE_URL.match(dat):
-                GLib.idle_add(self.create_station, dat)
-            elif path.isfile(dat):
-                GLib.idle_add(self.add_from_file, dat)
-            else:
-                print("No URL or file to open")
+                self.add_from_file(uri[6:])
 
     def on_selection_change(self, selection):
         self.edit_mode(False)
@@ -546,7 +530,7 @@ class MainWindow:
         ipc_file = path.expanduser("~/.cache/streams_port")
         remove(ipc_file)
 
-        Gtk.main_quit()
+        # Gtk.main_quit()
         return
 
     def write_state(self):
@@ -812,29 +796,32 @@ class MainWindow:
 
 
 if __name__ == '__main__':
-    ipc_path = path.expanduser("~/.cache/streams_port")
-    if path.isfile(ipc_path):
-        f = open(ipc_path, "r")
-        ipc_port = int(f.read())
-        f.close()
-
-        if len(argv) > 1:
-            d = argv[1]
-        else:
-            d = ""
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.connect(("localhost", ipc_port))
-        except socket.error as e:
-            s.close()
-            pass
-        else:
-            s.send(d.encode())
-            s.close()
-            exit(0)
+    # ipc_path = path.expanduser("~/.cache/streams_port")
+    # if path.isfile(ipc_path):
+    #     f = open(ipc_path, "r")
+    #     ipc_port = int(f.read())
+    #     f.close()
+    #
+    #     if len(argv) > 1:
+    #         d = argv[1]
+    #     else:
+    #         d = ""
+    #
+    #     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #     try:
+    #         s.connect(("localhost", ipc_port))
+    #     except socket.error as e:
+    #         s.close()
+    #         pass
+    #     else:
+    #         s.send(d.encode())
+    #         s.close()
+    #         exit(0)
 
     GObject.threads_init()
     Gst.init(None)
-    MainWindow()
-    Gtk.main()
+    app = Streams()
+    exit_status = app.run(sys.argv)
+    sys.exit(exit_status)
+    # MainWindow()
+    # Gtk.main()

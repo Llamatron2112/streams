@@ -18,7 +18,7 @@ class DataBase(Gtk.TreeStore):
         return it
 
     def save(self):
-        print("New DB save method")
+        print("DB save")
         stations = Et.Element("stations")
         self.foreach(self._add_row_to_xml, stations)
 
