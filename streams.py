@@ -33,6 +33,7 @@ GLADE_LOC = "{}/streams.glade".format(path.dirname(__file__))
 class MainWindow:
     def __init__(self):
         self.edit = False
+        self.locked = True
         self.builder = Gtk.Builder()
         self.builder.add_from_file(GLADE_LOC)
 
