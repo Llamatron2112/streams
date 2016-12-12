@@ -83,12 +83,14 @@ class MainWindow:
 
     def open(self, files):
         for f in files:
-            uri = f.get_uri()
-            print(uri)
-            if RE_URL.match(uri) and str.lower(uri[0:3]) == "http":
-                self.create_station(uri)
+            scheme = f.get_uri_scheme()
+            location = f.get_parse_name()
+            if scheme == "http":
+                self.create_station(location)
+            elif scheme == "file":
+                self.add_from_file(location)
             else:
-                self.add_from_file(uri[6:])
+                self.popup("couldn't determine if file or url.")
 
     def on_selection_change(self, selection):
         self.edit_mode(False)
@@ -195,6 +197,7 @@ class MainWindow:
             return
         self.locked = True
 
+        self.application.mark_busy()
         win_wait = self.pls_wait()
         while Gtk.events_pending():
             Gtk.main_iteration()
@@ -206,10 +209,12 @@ class MainWindow:
             win_wait.destroy()
             self.popup(err)
             self.locked = False
+            self.application.unmark_busy()
         else:
             win_wait.destroy()
             self.db.save()
             self.locked = False
+            self.application.unmark_busy()
         return
 
     def add_folder(self, widget=None):
@@ -244,6 +249,8 @@ class MainWindow:
         if self.locked:
             print("Locked")
             return
+
+        self.application.mark_busy()
         self.locked = True
         win_wait = self.pls_wait()
         while Gtk.events_pending():
@@ -256,10 +263,12 @@ class MainWindow:
             win_wait.destroy()
             self.popup(err)
             self.locked = False
+            self.application.unmark_busy()
         else:
             self.db.save()
             win_wait.destroy()
             self.locked = False
+            self.application.unmark_busy()
 
         return
 
