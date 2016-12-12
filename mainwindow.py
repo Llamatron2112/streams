@@ -85,7 +85,7 @@ class MainWindow:
         for f in files:
             scheme = f.get_uri_scheme()
             location = f.get_parse_name()
-            if scheme == "http":
+            if scheme == "http" or scheme == "https":
                 self.create_station(location)
             elif scheme == "file":
                 self.add_from_file(location)
