@@ -53,7 +53,8 @@ class MainWindow:
             "on_menu_item_export_activate": self.on_export,
             "on_menu_item_addurl_activate": self.add_url,
             "on_menu_item_addfold_activate": self.add_folder,
-            "on_menu_item_openfile_activate": self.add_file
+            "on_menu_item_openfile_activate": self.add_file,
+            "on_menu_item_export_folder_activate": self.on_export_folder
         }
         self.builder.connect_signals(events)
 
@@ -486,6 +487,8 @@ class MainWindow:
         button_dig.set_visible(visible)
         button_web.set_visible(visible)
 
+        export_folder_menu = self.builder.get_object("menu_item_export_folder")
+
         if not row[cursor][7]:
             url = row[cursor][1]
             genres = row[cursor][2]
@@ -493,6 +496,7 @@ class MainWindow:
             codec = row[cursor][4]
             bitrate = row[cursor][5]
             sample = row[cursor][6]
+            export_folder_menu.set_sensitive(False)
         else:
             url = ""
             genres = ""
@@ -500,6 +504,7 @@ class MainWindow:
             codec = ""
             bitrate = ""
             sample = ""
+            export_folder_menu.set_sensitive(True)
 
         text_url.set_text(url)
         text_genres.set_text(genres)
@@ -730,7 +735,7 @@ class MainWindow:
         self.db.save()
         return
 
-    def on_export(self, menu_item):
+    def pl_file_selecter(self):
         dial = Gtk.FileChooserDialog("Choose destination file",
                                      self.window,
                                      Gtk.FileChooserAction.SAVE,
@@ -769,8 +774,17 @@ class MainWindow:
                 response = dial.run()
                 dial.destroy()
                 if response != Gtk.ResponseType.OK:
-                    return
+                    return None
 
-            self.db.export(file)
+        return file
 
+    def on_export(self, menu_item):
+        file = self.pl_file_selecter()
+        self.db.export(file)
         return
+
+    def on_export_folder(self, menu_item):
+        file = self.pl_file_selecter()
+        iter = self.selection.get_selected()[1]
+        path = self.db.get_path(iter)
+        self.db.export(file, path)

@@ -87,8 +87,8 @@ class DataBase(Gtk.TreeStore):
             self.append(parent, row)
         return
 
-    def export(self, file):
-        exp = Export(file, self)
+    def export(self, file, fold_path=None):
+        exp = Export(file, self, fold_path)
 
         f = open(file, "w")
         f.write(exp.data)
