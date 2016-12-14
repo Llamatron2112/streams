@@ -24,11 +24,6 @@
       <column type="gint"/>
     </columns>
   </object>
-  <object class="GtkMenu" id="menu_window">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="menu_type_hint">dropdown-menu</property>
-  </object>
   <object class="GtkApplicationWindow" id="main_win">
     <property name="can_focus">False</property>
     <property name="role">Streams</property>
@@ -219,7 +214,6 @@
                         <property name="margin_right">5</property>
                         <property name="margin_top">5</property>
                         <property name="margin_bottom">5</property>
-                        <property name="popup">menu_window</property>
                         <child>
                           <placeholder/>
                         </child>

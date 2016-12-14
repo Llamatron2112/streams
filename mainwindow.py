@@ -8,15 +8,12 @@ import traceback
 
 from subprocess import Popen, PIPE, DEVNULL
 
-from collections import OrderedDict
-
-import json
-
 from station import Station
 from constants import RE_URL
 from tools import get_metadata, get_next_url
 from drag import drag
 from db import DataBase
+from commands import CommandsMenu
 
 
 class MainWindow:
@@ -33,6 +30,10 @@ class MainWindow:
         self.window.set_title("Streams")
         self.window.connect("delete-event", self.exit)
 
+        menu_com = self.builder.get_object("menu_command")
+        self.commands_menu = CommandsMenu(self)
+        menu_com.set_popup(self.commands_menu)
+
         events = {
             "on_selection_change": self.on_selection_change,
             "on_activation": self.on_activation,
@@ -46,9 +47,9 @@ class MainWindow:
             "on_url_change": self.dig_button_state,
             "on_web_change": self.web_button_state,
             "on_web_clicked": self.visit_web,
-            "on_menuchoice_save_activate": self.command_save,
-            "on_menuchoice_delete_activate": self.command_delete,
-            "on_command_menu_activated": self.command_menu_activated,
+            "on_menuchoice_save_activate": self.commands_menu.add,
+            "on_menuchoice_delete_activate": self.commands_menu.delete,
+            "on_command_menu_activated": self.commands_menu.activated,
             "on_drag_data_received": self.drag_data_received,
             "on_menu_item_export_activate": self.on_export,
             "on_menu_item_addurl_activate": self.add_url,
@@ -70,11 +71,6 @@ class MainWindow:
                                              Gdk.DragAction.MOVE)
 
         self.selection = self.builder.get_object("bookmarks_view_selection")
-
-        self.list_commands = OrderedDict()
-
-        self.commands_list_load()
-        self.command_menu_update()
 
         self.restore_state()
 
@@ -563,133 +559,6 @@ class MainWindow:
             self.window.maximize()
 
         self.builder.get_object("text_command").set_text(cmd[:-1])
-
-        return
-
-    def command_save(self, item):
-        dialog = Gtk.MessageDialog(self.window,
-                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                   Gtk.MessageType.QUESTION,
-                                   Gtk.ButtonsType.OK_CANCEL,
-                                   "Saving a new command line")
-        area = dialog.get_content_area()
-        dialog.format_secondary_text("Give a name for this action")
-        text = Gtk.Entry()
-        text.set_activates_default(Gtk.ResponseType.OK)
-        area.add(text)
-        text.show()
-        dialog.set_default_response(Gtk.ResponseType.OK)
-        response = dialog.run()
-
-        name = text.get_text()
-        dialog.destroy()
-
-        if response != Gtk.ResponseType.OK:
-            return
-
-        cmd = self.builder.get_object("text_command").get_text()
-        row = {name: cmd}
-
-        if name in self.list_commands:
-            dialog = Gtk.MessageDialog(self.window,
-                                       Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                       Gtk.MessageType.QUESTION,
-                                       Gtk.ButtonsType.OK_CANCEL,
-                                       "A command with that name already exists")
-            dialog.format_secondary_text("replace {}?".format(name))
-            dialog.set_default_response(Gtk.ResponseType.OK)
-            response = dialog.run()
-            dialog.destroy()
-
-            if response != Gtk.ResponseType.OK:
-                return
-
-        self.list_commands.update(row)
-        self.command_menu_update()
-        self.commands_list_save()
-        return
-
-    def command_delete(self, item):
-        cmd = self.builder.get_object("text_command").get_text()
-
-        for key in self.list_commands.keys():
-            if self.list_commands[key] == cmd:
-                dialog = Gtk.MessageDialog(self.window,
-                                           Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                                           Gtk.MessageType.QUESTION,
-                                           Gtk.ButtonsType.OK_CANCEL,
-                                           "You are about to delete an existing command")
-                dialog.format_secondary_text("Do you really want to delete the {} command ?".format(key))
-                dialog.set_default_response(Gtk.ResponseType.OK)
-                response = dialog.run()
-                dialog.destroy()
-
-                if response != Gtk.ResponseType.OK:
-                    return
-
-                del self.list_commands[key]
-                self.command_menu_update()
-                self.commands_list_save()
-                return
-
-        self.popup("Command doesn't match any saved command")
-        return
-
-    def command_menu_activated(self, item):
-        command = self.list_commands[item.get_label()]
-        self.builder.get_object("text_command").set_text(command)
-        return
-
-    def command_menu_update(self):
-        menu_command = self.builder.get_object("menu_window")
-
-        for widget in menu_command.get_children():
-            widget.destroy()
-
-        button_save = Gtk.MenuItem.new_with_label("Save Command")
-        button_save.connect("activate", self.command_save)
-        button_save.show()
-
-        button_delete = Gtk.MenuItem.new_with_label("Delete Command")
-        button_delete.connect("activate", self.command_delete)
-        button_delete.show()
-
-        menu_separator = Gtk.SeparatorMenuItem()
-        menu_separator.show()
-
-        menu_command.append(button_save)
-        menu_command.append(button_delete)
-        menu_command.append(menu_separator)
-
-        for key in self.list_commands.keys():
-            choice = Gtk.MenuItem.new_with_label(key)
-            choice.connect("activate", self.command_menu_activated)
-            menu_command.append(choice)
-            choice.show()
-
-        return
-
-    def commands_list_save(self):
-        commands_file = path.expanduser("~/.config/streams/commands.json")
-
-        if not path.exists(path.dirname(commands_file)):
-            makedirs(path.dirname(commands_file))
-
-        file = open(commands_file, 'w')
-        json.dump(self.list_commands, file)
-        file.close()
-        return
-
-    def commands_list_load(self):
-        commands_file = path.expanduser("~/.config/streams/commands.json")
-
-        if path.exists(commands_file):
-            file = open(commands_file, 'r')
-            self.list_commands = json.load(file, object_pairs_hook=OrderedDict)
-            file.close()
-        else:
-            self.list_commands = {"Deadbeef": "deadbeef {}",
-                                  "Rhythmbox": "rhythmbox {}"}
 
         return
 
