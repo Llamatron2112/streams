@@ -196,6 +196,7 @@
                       <object class="GtkEntry" id="text_command">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">This is the shell command that will be executed when a row is double clicked. Replace the stream address with {}.</property>
                         <property name="margin_left">5</property>
                         <property name="margin_top">5</property>
                         <property name="margin_bottom">5</property>
@@ -341,6 +342,7 @@
                         <property name="label" translatable="yes">Dig</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="tooltip_text" translatable="yes">If the url points to a playlist, parse it to extract the server's "true" url.</property>
                         <property name="margin_right">5</property>
                         <property name="hexpand">True</property>
                         <signal name="clicked" handler="on_dig_clicked" object="text_url" swapped="no"/>
@@ -558,6 +560,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="tooltip_text" translatable="yes">Automatically populate stream infos with the metadata it provides</property>
                         <signal name="clicked" handler="on_auto_clicked" object="text_url" swapped="no"/>
                       </object>
                       <packing>
