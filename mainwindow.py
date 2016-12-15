@@ -4,6 +4,8 @@ from gi.repository import Gtk, Gdk
 
 from os import path, makedirs
 
+import re
+
 import traceback
 
 from subprocess import Popen, PIPE, DEVNULL
@@ -50,20 +52,24 @@ class MainWindow:
             "on_menuchoice_save_activate": self.commands_menu.add,
             "on_menuchoice_delete_activate": self.commands_menu.delete,
             "on_command_menu_activated": self.commands_menu.activated,
-            "on_drag_data_received": self.drag_data_received,
             "on_menu_item_export_activate": self.on_export,
             "on_menu_item_addurl_activate": self.add_url,
             "on_menu_item_addfold_activate": self.add_folder,
             "on_menu_item_openfile_activate": self.add_file,
-            "on_menu_item_export_folder_activate": self.on_export_folder
+            "on_menu_item_export_folder_activate": self.on_export_folder,
+            "on_entry_filter_changed": self.filter_change,
+            "on_view_bookmarks_drag_drop": self.on_drag_drop
         }
         self.builder.connect_signals(events)
 
         self.db = DataBase(str, str, str, str, str, str, str, bool, int)
         self.db.load()
+        self.tree_filter = self.db.filter_new(None)
+        self.entry_filter = self.builder.get_object("entry_filter")
+        self.tree_filter.set_visible_func(self.filter_func)
 
         self.treeview = self.builder.get_object("view_bookmarks")
-        self.treeview.set_model(self.db)
+        self.treeview.set_model(self.tree_filter)
         self.treeview.enable_model_drag_source(Gdk.ModifierType.BUTTON1_MASK,
                                                [("list_row", Gtk.TargetFlags.SAME_WIDGET, 0)],
                                                Gdk.DragAction.MOVE)
@@ -90,15 +96,44 @@ class MainWindow:
                 self.popup("couldn't determine if file or url.")
 
     def on_selection_change(self, selection):
-        self.edit_mode(False)
-        self.load_selection_data()
+        model, iter = selection.get_selected()
+        grid = self.builder.get_object("info_grid")
+        actions = self.builder.get_object("box_actions")
+        edit = self.builder.get_object("box_edit")
+        if iter is None:
+            grid.set_visible(False)
+            actions.set_visible(False)
+            edit.set_visible(False)
+        else:
+            grid.set_visible(True)
+            actions.set_visible(True)
+            self.edit_mode(False)
+            self.load_selection_data()
         return
 
+    def filter_change(self, entry):
+        self.tree_filter.refilter()
+
+    def filter_func(self, model, iter, data):
+        row = model.get(iter, 0, 2, 7)
+        match = self.entry_filter.get_text()
+        title = row[0]
+        genres = row[1]
+        folder = row[2]
+        if row[0] is None:
+            return False
+        if re.search(match, title, re.IGNORECASE)\
+                or (genres is not None and re.search(match, genres, re.IGNORECASE))\
+                or folder:
+            return True
+        else:
+            return False
+
     def on_activation(self, text, path, column):
-        if self.db[path][7]:
+        if self.tree_filter[path][7]:
             return
 
-        url = self.db[path][1]
+        url = self.tree_filter[path][1]
         cmd = text.get_text().format(url)
         cmd = cmd.split(" ", 1)
         try:
@@ -287,8 +322,9 @@ class MainWindow:
         if response != Gtk.ResponseType.OK:
             return
 
-        row = self.selection.get_selected()[1]
-        self.db.remove(row)
+        f_row = self.selection.get_selected()[1]
+        db_row = self.tree_filter.convert_iter_to_child_iter(f_row)
+        self.db.remove(db_row)
 
         self.db.save()
         return
@@ -310,13 +346,13 @@ class MainWindow:
         if name == "":
             name = url
 
-        self.db.set_value(row, 0, name)
-        self.db.set_value(row, 1, url)
-        self.db.set_value(row, 2, genres)
-        self.db.set_value(row, 3, web)
-        self.db.set_value(row, 4, codec)
-        self.db.set_value(row, 5, bitrate)
-        self.db.set_value(row, 6, sample)
+        self.tree_filter.set_value(row, 0, name)
+        self.tree_filter.set_value(row, 1, url)
+        self.tree_filter.set_value(row, 2, genres)
+        self.tree_filter.set_value(row, 3, web)
+        self.tree_filter.set_value(row, 4, codec)
+        self.tree_filter.set_value(row, 5, bitrate)
+        self.tree_filter.set_value(row, 6, sample)
 
         self.db.save()
 
@@ -361,11 +397,20 @@ class MainWindow:
         return
 
     def on_autofill(self, text):
+        self.application.mark_busy()
+        self.locked = True
+        win_wait = self.pls_wait()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
         url = text.get_text()
         try:
             data = get_metadata(url)
         except Exception as err:
             traceback.print_exc()
+            win_wait.destroy()
+            self.application.unmark_busy()
+            self.locked = False
             self.popup(err)
         else:
             self.builder.get_object("text_name").set_text(data[0])
@@ -376,14 +421,18 @@ class MainWindow:
             self.builder.get_object("text_bitrate").set_text(data[5])
             self.builder.get_object("text_sample").set_text(data[6])
 
+            win_wait.destroy()
+            self.locked = False
+            self.application.unmark_busy()
+
         return
 
     def edit_mode(self, state):
         self.edit = state
 
-        row, cursor = self.selection.get_selected()
+        model, iter = self.selection.get_selected()
         button_auto = self.builder.get_object("button_auto")
-        button_auto.set_sensitive(not row[cursor][7])
+        button_auto.set_sensitive(not model[iter][7])
 
         self.builder.get_object("box_edit").set_visible(state)
         self.builder.get_object("box_actions").set_visible(not state)
@@ -442,8 +491,8 @@ class MainWindow:
         return
 
     def load_selection_data(self):
-        row, cursor = self.selection.get_selected()
-        if cursor is None:
+        model, iter = self.selection.get_selected()
+        if iter is None:
             return
 
         text_name = self.builder.get_object("text_name")
@@ -463,10 +512,10 @@ class MainWindow:
         button_dig = self.builder.get_object("button_dig")
         button_web = self.builder.get_object("button_web")
 
-        name = row[cursor][0]
+        name = model[iter][0]
         text_name.set_text(name)
 
-        visible = not row[cursor][7]
+        visible = not model[iter][7]
 
         text_url.set_visible(visible)
         label_url.set_visible(visible)
@@ -485,13 +534,13 @@ class MainWindow:
 
         export_folder_menu = self.builder.get_object("menu_item_export_folder")
 
-        if not row[cursor][7]:
-            url = row[cursor][1]
-            genres = row[cursor][2]
-            web = row[cursor][3]
-            codec = row[cursor][4]
-            bitrate = row[cursor][5]
-            sample = row[cursor][6]
+        if not model[iter][7]:
+            url = model[iter][1]
+            genres = model[iter][2]
+            web = model[iter][3]
+            codec = model[iter][4]
+            bitrate = model[iter][5]
+            sample = model[iter][6]
             export_folder_menu.set_sensitive(False)
         else:
             url = ""
@@ -588,20 +637,23 @@ class MainWindow:
         win.show_now()
         return win
 
-    def drag_data_received(self, treeview, context, x, y, selection, info, etime):
+    def on_drag_drop(self, treeview, context, x, y, time):
+        treeview.stop_emission("drag_drop")
         selec = treeview.get_selection()
-        row, cursor = selec.get_selected()
+        model, iter = selec.get_selected()
         data = []
-        for d in row[cursor]:
+        for d in model[iter]:
             data.append(d)
 
         drop_info = treeview.get_dest_row_at_pos(x, y)
+        src_iter = self.tree_filter.convert_iter_to_child_iter(iter)
 
-        drag(data, drop_info, self.db, row, cursor)
+        drag(data, drop_info, self.db, model, src_iter)
 
-        context.finish(True, True, etime)
+        context.finish(True, True, time)
 
-        self.db.save()
+        # self.db.save()
+
         return
 
     def pl_file_selecter(self):
@@ -655,5 +707,7 @@ class MainWindow:
     def on_export_folder(self, menu_item):
         file = self.pl_file_selecter()
         iter = self.selection.get_selected()[1]
-        path = self.db.get_path(iter)
-        self.db.export(file, path)
+        f_path = self.tree_filter.get_path(iter)
+        db_path = self.tree_filter.convert_path_to_child_path(f_path)
+        self.db.export(file, db_path)
+        return
