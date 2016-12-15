@@ -652,7 +652,7 @@ class MainWindow:
 
         context.finish(True, True, time)
 
-        # self.db.save()
+        self.db.save()
 
         return
 
