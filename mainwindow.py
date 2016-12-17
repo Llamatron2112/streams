@@ -22,6 +22,7 @@ class MainWindow:
     def __init__(self, application):
         self.application = application
         self.edit = False
+        self.filter = False
         self.locked = True
         self.builder = Gtk.Builder()
         glade_path = "{}/streams.glade".format(path.dirname(__file__))
@@ -58,7 +59,8 @@ class MainWindow:
             "on_menu_item_openfile_activate": self.add_file,
             "on_menu_item_export_folder_activate": self.on_export_folder,
             "on_entry_filter_changed": self.filter_change,
-            "on_view_bookmarks_drag_drop": self.on_drag_drop
+            "on_view_bookmarks_drag_drop": self.on_drag_drop,
+            "on_menu_item_filter_list_toggled": self.filter_toggle
         }
         self.builder.connect_signals(events)
 
@@ -114,6 +116,13 @@ class MainWindow:
     def filter_change(self, entry):
         self.tree_filter.refilter()
 
+    def filter_toggle(self, item):
+        self.filter = item.get_active()
+        self.entry_filter.set_visible(self.filter)
+        if self.filter:
+            self.entry_filter.grab_focus()
+        self.tree_filter.refilter()
+
     def filter_func(self, model, iter, data):
         row = model.get(iter, 0, 2, 7)
         match = self.entry_filter.get_text()
@@ -123,8 +132,9 @@ class MainWindow:
         if row[0] is None:
             return False
         if re.search(match, title, re.IGNORECASE)\
-                or (genres is not None and re.search(match, genres, re.IGNORECASE))\
-                or folder:
+                or (genres is not None and re.search(match, genres, re.IGNORECASE)) \
+                or folder \
+                or not self.filter:
             return True
         else:
             return False

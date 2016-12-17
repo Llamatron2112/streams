@@ -84,6 +84,30 @@
               </object>
             </child>
             <child>
+              <object class="GtkMenuItem" id="menu_item_view">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">View</property>
+                <property name="use_underline">True</property>
+                <child type="submenu">
+                  <object class="GtkMenu">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkCheckMenuItem" id="menu_item_filter_list">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Filter List</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="on_menu_item_filter_list_toggled" swapped="no"/>
+                        <accelerator key="f" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
               <object class="GtkMenuItem">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
@@ -135,7 +159,6 @@
                         <property name="margin_left">5</property>
                         <property name="margin_right">5</property>
                         <property name="margin_top">5</property>
-                        <property name="margin_bottom">5</property>
                         <property name="headers_visible">False</property>
                         <property name="enable_search">False</property>
                         <signal name="cursor-changed" handler="on_selection_change" object="bookmarks_view_selection" swapped="no"/>
@@ -168,8 +191,10 @@
                 </child>
                 <child>
                   <object class="GtkEntry" id="entry_filter">
-                    <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="no_show_all">True</property>
+                    <property name="margin_left">5</property>
+                    <property name="margin_right">5</property>
                     <signal name="changed" handler="on_entry_filter_changed" swapped="no"/>
                   </object>
                   <packing>
