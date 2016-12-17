@@ -260,8 +260,8 @@
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkGrid" id="info_grid">
-                    <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="margin_left">5</property>
                     <property name="margin_right">5</property>
                     <property name="margin_top">5</property>
@@ -501,8 +501,8 @@
                 </child>
                 <child>
                   <object class="GtkBox" id="box_actions">
-                    <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="margin_left">5</property>
                     <property name="margin_right">5</property>
                     <property name="margin_top">5</property>
