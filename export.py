@@ -13,8 +13,8 @@ class Export:
             head = "[playlist]\nNumberOfEntries={}\n".format(self.count)
             self.data = head + self.data
 
-    def _export_m3u(self, model, path, iter):
-        row = self.db.get(iter, 0, 1, 7)
+    def _export_m3u(self, model, path, treeiter):
+        row = self.db.get(treeiter, 0, 1, 7)
         if not row[2] and (self.folder_path is None or self.folder_path[0] == path[0]):
             self.count += 1
             self.data += "#EXTINF:-1,{}\n".format(row[0])
@@ -22,8 +22,8 @@ class Export:
 
         return
 
-    def _export_pls(self, mode, path, iter):
-        row = self.db.get(iter, 0, 1, 7)
+    def _export_pls(self, mode, path, treeiter):
+        row = self.db.get(treeiter, 0, 1, 7)
         if not row[2] and (self.folder_path is None or self.folder_path[0] == path[0]):
             self.count += 1
             self.data += "File{}={}\n".format(self.count, row[1])

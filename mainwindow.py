@@ -98,11 +98,11 @@ class MainWindow:
                 self.popup("couldn't determine if file or url.")
 
     def on_selection_change(self, selection):
-        model, iter = selection.get_selected()
+        model, treeiter = selection.get_selected()
         grid = self.builder.get_object("info_grid")
         actions = self.builder.get_object("box_actions")
         edit = self.builder.get_object("box_edit")
-        if iter is None:
+        if treeiter is None:
             grid.set_visible(False)
             actions.set_visible(False)
             edit.set_visible(False)
@@ -123,8 +123,8 @@ class MainWindow:
             self.entry_filter.grab_focus()
         self.tree_filter.refilter()
 
-    def filter_func(self, model, iter, data):
-        row = model.get(iter, 0, 2, 7)
+    def filter_func(self, model, treeiter, data):
+        row = model.get(treeiter, 0, 2, 7)
         match = self.entry_filter.get_text()
         title = row[0]
         genres = row[1]
@@ -501,8 +501,8 @@ class MainWindow:
         return
 
     def load_selection_data(self):
-        model, iter = self.selection.get_selected()
-        if iter is None:
+        model, treeiter = self.selection.get_selected()
+        if treeiter is None:
             return
 
         text_name = self.builder.get_object("text_name")
@@ -522,10 +522,10 @@ class MainWindow:
         button_dig = self.builder.get_object("button_dig")
         button_web = self.builder.get_object("button_web")
 
-        name = model[iter][0]
+        name = model[treeiter][0]
         text_name.set_text(name)
 
-        visible = not model[iter][7]
+        visible = not model[treeiter][7]
 
         text_url.set_visible(visible)
         label_url.set_visible(visible)
@@ -544,13 +544,13 @@ class MainWindow:
 
         export_folder_menu = self.builder.get_object("menu_item_export_folder")
 
-        if not model[iter][7]:
-            url = model[iter][1]
-            genres = model[iter][2]
-            web = model[iter][3]
-            codec = model[iter][4]
-            bitrate = model[iter][5]
-            sample = model[iter][6]
+        if not model[treeiter][7]:
+            url = model[treeiter][1]
+            genres = model[treeiter][2]
+            web = model[treeiter][3]
+            codec = model[treeiter][4]
+            bitrate = model[treeiter][5]
+            sample = model[treeiter][6]
             export_folder_menu.set_sensitive(False)
         else:
             url = ""
@@ -650,13 +650,13 @@ class MainWindow:
     def on_drag_drop(self, treeview, context, x, y, time):
         treeview.stop_emission("drag_drop")
         selec = treeview.get_selection()
-        model, iter = selec.get_selected()
+        model, treeiter = selec.get_selected()
         data = []
-        for d in model[iter]:
+        for d in model[treeiter]:
             data.append(d)
 
         drop_info = treeview.get_dest_row_at_pos(x, y)
-        src_iter = self.tree_filter.convert_iter_to_child_iter(iter)
+        src_iter = self.tree_filter.convert_iter_to_child_iter(treeiter)
 
         drag(data, drop_info, self.db, model, src_iter)
 
@@ -716,8 +716,8 @@ class MainWindow:
 
     def on_export_folder(self, menu_item):
         file = self.pl_file_selecter()
-        iter = self.selection.get_selected()[1]
-        f_path = self.tree_filter.get_path(iter)
+        treeiter = self.selection.get_selected()[1]
+        f_path = self.tree_filter.get_path(treeiter)
         db_path = self.tree_filter.convert_path_to_child_path(f_path)
         self.db.export(file, db_path)
         return

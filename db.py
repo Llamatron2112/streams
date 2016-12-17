@@ -31,8 +31,8 @@ class DataBase(Gtk.TreeStore):
         db.write(db_path)
         return
 
-    def _add_row_to_xml(self, model, path, iter, user_data):
-        row = self.get(iter, 0, 1, 2, 3, 4, 5, 6, 7)
+    def _add_row_to_xml(self, model, path, treeiter, user_data):
+        row = self.get(treeiter, 0, 1, 2, 3, 4, 5, 6, 7)
         server = Et.SubElement(user_data, "server")
         server.text = row[0]
         server.set("url", row[1])
@@ -43,7 +43,7 @@ class DataBase(Gtk.TreeStore):
         server.set("sample", row[6])
         server.set("folder", str(row[7]))
 
-        parent_iter = self.iter_parent(iter)
+        parent_iter = self.iter_parent(treeiter)
         if parent_iter is not None:
             parent = self.get_path(parent_iter)
         else:
