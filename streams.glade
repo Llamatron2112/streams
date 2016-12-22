@@ -2,33 +2,6 @@
 <!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkTreeStore" id="bookmarks">
-    <columns>
-      <!-- column-name name -->
-      <column type="gchararray"/>
-      <!-- column-name url -->
-      <column type="gchararray"/>
-      <!-- column-name genres -->
-      <column type="gchararray"/>
-      <!-- column-name web -->
-      <column type="gchararray"/>
-      <!-- column-name codec -->
-      <column type="gchararray"/>
-      <!-- column-name bitrate -->
-      <column type="gchararray"/>
-      <!-- column-name samplerate -->
-      <column type="gchararray"/>
-      <!-- column-name folder -->
-      <column type="gboolean"/>
-      <!-- column-name weight -->
-      <column type="gint"/>
-    </columns>
-  </object>
-  <object class="GtkMenu" id="menu_window">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="menu_type_hint">dropdown-menu</property>
-  </object>
   <object class="GtkApplicationWindow" id="main_win">
     <property name="can_focus">False</property>
     <property name="role">Streams</property>
@@ -96,6 +69,40 @@
                         <signal name="activate" handler="on_menu_item_export_activate" swapped="no"/>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="menu_item_export_folder">
+                        <property name="visible">True</property>
+                        <property name="sensitive">False</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Export Folder</property>
+                        <property name="use_underline">True</property>
+                        <signal name="activate" handler="on_menu_item_export_folder_activate" swapped="no"/>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkMenuItem" id="menu_item_view">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">View</property>
+                <property name="use_underline">True</property>
+                <child type="submenu">
+                  <object class="GtkMenu">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkCheckMenuItem" id="menu_item_filter_list">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Filter List</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="on_menu_item_filter_list_toggled" swapped="no"/>
+                        <accelerator key="f" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -152,11 +159,10 @@
                         <property name="margin_left">5</property>
                         <property name="margin_right">5</property>
                         <property name="margin_top">5</property>
-                        <property name="margin_bottom">5</property>
-                        <property name="model">bookmarks</property>
                         <property name="headers_visible">False</property>
+                        <property name="enable_search">False</property>
                         <signal name="cursor-changed" handler="on_selection_change" object="bookmarks_view_selection" swapped="no"/>
-                        <signal name="drag-data-received" handler="on_drag_data_received" swapped="no"/>
+                        <signal name="drag-drop" handler="on_view_bookmarks_drag_drop" swapped="no"/>
                         <signal name="row-activated" handler="on_activation" object="text_command" swapped="no"/>
                         <child internal-child="selection">
                           <object class="GtkTreeSelection" id="bookmarks_view_selection"/>
@@ -184,6 +190,20 @@
                   </packing>
                 </child>
                 <child>
+                  <object class="GtkEntry" id="entry_filter">
+                    <property name="can_focus">True</property>
+                    <property name="no_show_all">True</property>
+                    <property name="margin_left">5</property>
+                    <property name="margin_right">5</property>
+                    <signal name="changed" handler="on_entry_filter_changed" swapped="no"/>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
@@ -191,6 +211,7 @@
                       <object class="GtkEntry" id="text_command">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">This is the shell command that will be executed when a row is double clicked. Replace the stream address with {}.</property>
                         <property name="margin_left">5</property>
                         <property name="margin_top">5</property>
                         <property name="margin_bottom">5</property>
@@ -209,7 +230,6 @@
                         <property name="margin_right">5</property>
                         <property name="margin_top">5</property>
                         <property name="margin_bottom">5</property>
-                        <property name="popup">menu_window</property>
                         <child>
                           <placeholder/>
                         </child>
@@ -224,7 +244,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>
@@ -240,8 +260,8 @@
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkGrid" id="info_grid">
-                    <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="margin_left">5</property>
                     <property name="margin_right">5</property>
                     <property name="margin_top">5</property>
@@ -337,6 +357,7 @@
                         <property name="label" translatable="yes">Dig</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="tooltip_text" translatable="yes">If the url points to a playlist, parse it to extract the server's "true" url.</property>
                         <property name="margin_right">5</property>
                         <property name="hexpand">True</property>
                         <signal name="clicked" handler="on_dig_clicked" object="text_url" swapped="no"/>
@@ -480,8 +501,8 @@
                 </child>
                 <child>
                   <object class="GtkBox" id="box_actions">
-                    <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="margin_left">5</property>
                     <property name="margin_right">5</property>
                     <property name="margin_top">5</property>
@@ -554,6 +575,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="tooltip_text" translatable="yes">Automatically populate stream infos with the metadata it provides</property>
                         <signal name="clicked" handler="on_auto_clicked" object="text_url" swapped="no"/>
                       </object>
                       <packing>
@@ -595,7 +617,7 @@
                   </object>
                   <packing>
                     <property name="expand">False</property>
-                    <property name="fill">True</property>
+                    <property name="fill">False</property>
                     <property name="position">2</property>
                   </packing>
                 </child>

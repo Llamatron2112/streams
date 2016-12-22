@@ -3,11 +3,12 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-def drag(data, drop_info, bookmarks, row, cursor):
+def drag(data, drop_info, bookmarks, model, src_iter):
     if drop_info:
         source_folder = data[7]
-        pat, position = drop_info
-        dest_iter = bookmarks.get_iter(pat)
+        row_path, position = drop_info
+        path = model.convert_path_to_child_path(row_path)
+        dest_iter = bookmarks.get_iter(path)
         dest_folder = bookmarks.get_value(dest_iter, 7)
         dest_parent = bookmarks.iter_parent(dest_iter)
         if not source_folder:
@@ -31,7 +32,7 @@ def drag(data, drop_info, bookmarks, row, cursor):
     else:
         new_iter = bookmarks.append(None, data)
 
-    for it in row[cursor].iterchildren():
+    for it in bookmarks[src_iter].iterchildren():
         dat = []
         for value in it:
             dat.append(value)
