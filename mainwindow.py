@@ -440,9 +440,9 @@ class MainWindow:
     def edit_mode(self, state):
         self.edit = state
 
-        model, iter = self.selection.get_selected()
+        model, treeiter = self.selection.get_selected()
         button_auto = self.builder.get_object("button_auto")
-        button_auto.set_sensitive(not model[iter][7])
+        button_auto.set_sensitive(not model[treeiter][7])
 
         self.builder.get_object("box_edit").set_visible(state)
         self.builder.get_object("box_actions").set_visible(not state)
@@ -461,16 +461,18 @@ class MainWindow:
         return
 
     def dig_button_state(self, entry):
-        row, cursor = self.selection.get_selected()
+        model, treeiter = self.selection.get_selected()
 
-        state = self.edit and not row[cursor][7]
+        state = self.edit and (not model[treeiter][7])
+        grid = self.builder.get_object("info_grid")
+        button = self.builder.get_object("button_dig")
+
+        button.set_visible(state)
 
         if state:
-            self.builder.get_object("info_grid").child_set_property(entry, "width", 1)
+            grid.child_set_property(entry, "width", 1)
         else:
-            self.builder.get_object("info_grid").child_set_property(entry, "width", 2)
-
-        self.builder.get_object("button_dig").set_visible(state)
+            grid.child_set_property(entry, "width", 2)
 
         return
 
@@ -478,14 +480,20 @@ class MainWindow:
         url = entry.get_text()
         state = RE_URL.match(url)
 
+        grid = self.builder.get_object("info_grid")
+        button = self.builder.get_object("button_web")
+
         if state is None:
             state = False
 
+        button.set_visible(state)
+        button.set_sensitive(state)
+
         if state:
-            self.builder.get_object("info_grid").child_set_property(entry, "width", 1)
+            grid.child_set_property(entry, "width", 1)
         else:
-            self.builder.get_object("info_grid").child_set_property(entry, "width", 2)
-        self.builder.get_object("button_web").set_visible(state)
+            grid.child_set_property(entry, "width", 2)
+
 
         return
 
@@ -658,10 +666,11 @@ class MainWindow:
         drop_info = treeview.get_dest_row_at_pos(x, y)
         src_iter = self.tree_filter.convert_iter_to_child_iter(treeiter)
 
-        drag(data, drop_info, self.db, model, src_iter)
+        dest_row = drag(data, drop_info, self.db, model, src_iter)
 
         context.finish(True, True, time)
 
+        self.selection.select_path(dest_row)
         self.db.save()
 
         return

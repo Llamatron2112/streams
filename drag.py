@@ -38,4 +38,4 @@ def drag(data, drop_info, bookmarks, model, src_iter):
             dat.append(value)
         bookmarks.append(new_iter, dat)
 
-    return
+    return row_path

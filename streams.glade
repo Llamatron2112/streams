@@ -161,11 +161,12 @@
                         <property name="margin_top">5</property>
                         <property name="headers_visible">False</property>
                         <property name="enable_search">False</property>
-                        <signal name="cursor-changed" handler="on_selection_change" object="bookmarks_view_selection" swapped="no"/>
                         <signal name="drag-drop" handler="on_view_bookmarks_drag_drop" swapped="no"/>
                         <signal name="row-activated" handler="on_activation" object="text_command" swapped="no"/>
                         <child internal-child="selection">
-                          <object class="GtkTreeSelection" id="bookmarks_view_selection"/>
+                          <object class="GtkTreeSelection" id="bookmarks_view_selection">
+                            <signal name="changed" handler="on_selection_change" swapped="no"/>
+                          </object>
                         </child>
                         <child>
                           <object class="GtkTreeViewColumn" id="Name">
@@ -321,7 +322,6 @@
                       <packing>
                         <property name="left_attach">1</property>
                         <property name="top_attach">1</property>
-                        <property name="width">2</property>
                       </packing>
                     </child>
                     <child>
@@ -349,7 +349,6 @@
                       <packing>
                         <property name="left_attach">1</property>
                         <property name="top_attach">3</property>
-                        <property name="width">2</property>
                       </packing>
                     </child>
                     <child>
@@ -357,6 +356,7 @@
                         <property name="label" translatable="yes">Dig</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="no_show_all">True</property>
                         <property name="tooltip_text" translatable="yes">If the url points to a playlist, parse it to extract the server's "true" url.</property>
                         <property name="margin_right">5</property>
                         <property name="hexpand">True</property>
