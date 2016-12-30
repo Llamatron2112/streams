@@ -38,4 +38,7 @@ def drag(data, drop_info, bookmarks, model, src_iter):
             dat.append(value)
         bookmarks.append(new_iter, dat)
 
-    return row_path
+    new_path = bookmarks.get_path(new_iter)
+    reference = Gtk.TreeRowReference.new(bookmarks, new_path)
+
+    return reference

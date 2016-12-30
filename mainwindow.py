@@ -666,11 +666,11 @@ class MainWindow:
         drop_info = treeview.get_dest_row_at_pos(x, y)
         src_iter = self.tree_filter.convert_iter_to_child_iter(treeiter)
 
-        dest_row = drag(data, drop_info, self.db, model, src_iter)
-
+        dest_ref = drag(data, drop_info, self.db, model, src_iter)
         context.finish(True, True, time)
 
-        self.selection.select_path(dest_row)
+        new_path = dest_ref.get_path()
+        self.selection.select_path(new_path)
         self.db.save()
 
         return
