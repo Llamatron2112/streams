@@ -670,7 +670,8 @@ class MainWindow:
         context.finish(True, True, time)
 
         new_path = dest_ref.get_path()
-        self.selection.select_path(new_path)
+        filt_path = self.tree_filter.convert_child_path_to_path(new_path)
+        self.selection.select_path(filt_path)
         self.db.save()
 
         return
