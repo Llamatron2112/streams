@@ -1,7 +1,7 @@
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("GstPbutils", "1.0")
-from gi.repository import Gtk, GstPbutils
+from gi.repository import GstPbutils
 
 import http
 from http.client import error

@@ -1,4 +1,5 @@
 import gi
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 
@@ -131,7 +132,7 @@ class MainWindow:
         folder = row[2]
         if row[0] is None:
             return False
-        if re.search(match, title, re.IGNORECASE)\
+        if re.search(match, title, re.IGNORECASE) \
                 or (genres is not None and re.search(match, genres, re.IGNORECASE)) \
                 or folder \
                 or not self.filter:
@@ -494,7 +495,6 @@ class MainWindow:
         else:
             grid.child_set_property(entry, "width", 2)
 
-
         return
 
     @staticmethod
@@ -631,7 +631,7 @@ class MainWindow:
 
     def popup(self, err, msg_type=Gtk.MessageType.ERROR):
         dialog = Gtk.MessageDialog(self.window,
-                                   (Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT),
+                                   (Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT),
                                    msg_type,
                                    Gtk.ButtonsType.CLOSE,
                                    err)
